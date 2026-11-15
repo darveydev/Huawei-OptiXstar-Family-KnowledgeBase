@@ -15,6 +15,13 @@
 - 华为 OptiXstar K156-20：FTTR 从光网关，数量 3 台；请核对铭牌，避免与 V156-20 等型号混写。
 - GL.iNet GL-MT6000（Flint 2）：承担 PPPoE、NAT、DHCP、DNS、防火墙及远程访问等路由职责。
 
+## 在线图表预览
+
+> **预览状态：待确认部署。** 仓库元数据显示 GitHub Pages 已启用（`has_pages: true`），但目前无法确认站点是否已成功部署。请先在仓库的 **Settings → Pages** 检查发布来源并完成部署；部署成功后，以下预览链接可用。
+
+- [接线图.html（GitHub Pages 预览）](https://darveydev.github.io/Huawei-OptiXstar-Family-KnowledgeBase/06-%E5%9B%BE%E8%A1%A8%E4%B8%8E%E9%80%9F%E6%9F%A5/%E6%8E%A5%E7%BA%BF%E5%9B%BE.html) · [仓库源文件](https://github.com/darveydev/Huawei-OptiXstar-Family-KnowledgeBase/blob/main/06-%E5%9B%BE%E8%A1%A8%E4%B8%8E%E9%80%9F%E6%9F%A5/%E6%8E%A5%E7%BA%BF%E5%9B%BE.html)
+- [速查卡-一页纸.html（GitHub Pages 预览）](https://darveydev.github.io/Huawei-OptiXstar-Family-KnowledgeBase/06-%E5%9B%BE%E8%A1%A8%E4%B8%8E%E9%80%9F%E6%9F%A5/%E9%80%9F%E6%9F%A5%E5%8D%A1-%E4%B8%80%E9%A1%B5%E7%BA%B8.html) · [仓库源文件](https://github.com/darveydev/Huawei-OptiXstar-Family-KnowledgeBase/blob/main/06-%E5%9B%BE%E8%A1%A8%E4%B8%8E%E9%80%9F%E6%9F%A5/%E9%80%9F%E6%9F%A5%E5%8D%A1-%E4%B8%80%E9%A1%B5%E7%BA%B8.html)
+
 ## 2. 从哪里开始
 
 1. 阅读 [技术勘误与实施前核验](00-重要说明/技术勘误与实施前核验.md)，再填写 [现场参数采集表](00-重要说明/现场参数采集表.md)。
