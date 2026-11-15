@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>家庭光网关改造 · 接线图</title>
+<style>
+  @page { size: A4 landscape; margin: 8mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Source Han Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    background: #eef2f5; padding: 6mm;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .sheet {
+    width: 281mm; height: 193mm; background: #fff; margin: 0 auto 6mm;
+    padding: 6mm 8mm; border-radius: 3mm; position: relative;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12); display: flex; flex-direction: column;
+    overflow: hidden; page-break-after: always; break-after: page;
+  }
+  .sheet:last-of-type { page-break-after: auto; break-after: auto; margin-bottom: 0; }
+  @media print { body { padding: 0; background: #fff; } .sheet { box-shadow: none; margin: 0; border-radius: 0; } }
+  h1 { font-size: 15pt; color: #1c3d3a; letter-spacing: .5px; }
+  h1 span { font-size: 8pt; color: #7d9a96; font-weight: 400; margin-left: 3mm; letter-spacing: 0; }
+  .sub { font-size: 8pt; color: #6b8480; margin-top: 1.5mm; }
+  .stage-tag {
+    display: inline-block; background: #1c3d3a; color: #fff; font-size: 8pt;
+    padding: 1mm 3mm; border-radius: 1mm; letter-spacing: 1px;
+  }
+  .stage-tag.warn { background: #b5573f; }
+  .stage-tag.ok { background: #4d7e8b; }
+
+  /* ===== 设备块 ===== */
+  .topo { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 1mm; margin-top: 2mm; }
+  .row { display: flex; align-items: center; justify-content: center; gap: 4mm; }
+  .dev {
+    border: .9pt solid #2c5a55; border-radius: 2mm; padding: 2.6mm 3.4mm;
+    background: #f7fbfa; position: relative; min-width: 46mm;
+  }
+  .dev.main { background: #e8f4f2; border-width: 1.4pt; border-color: #1c3d3a; }
+  .dev.router { background: #fdf4ec; border-color: #c2733f; }
+  .dev.sub { background: #f4f6fb; border-color: #6b7fa8; min-width: 34mm; padding: 2mm 2.4mm; }
+  .dev.olt { background: #f0eef6; border-color: #7a6fb0; min-width: 40mm; }
+  .dev-name { font-size: 9.5pt; font-weight: 700; color: #1c3d3a; }
+  .dev.router .dev-name { color: #a35a28; }
+  .dev.sub .dev-name { color: #4a5d82; font-size: 8.5pt; }
+  .dev-role { font-size: 7pt; color: #fff; background: #4d7e8b; display: inline-block;
+              padding: .4mm 1.6mm; border-radius: .8mm; margin-top: 1mm; }
+  .dev.router .dev-role { background: #c2733f; }
+  .dev.sub .dev-role { background: #6b7fa8; }
+  .dev.olt .dev-role { background: #7a6fb0; }
+  .dev-spec { font-size: 6.8pt; color: #5f7a76; margin-top: 1.2mm; line-height: 1.5; }
+
+  /* 端口 */
+  .ports { display: flex; gap: 1mm; margin-top: 1.6mm; }
+  .port {
+    width: 5mm; height: 4mm; border: .6pt solid #5f7a76; border-radius: .5mm;
+    background: #fff; font-size: 5pt; text-align: center; line-height: 4mm; color: #5f7a76;
+  }
+  .port.hot { background: #c2733f; border-color: #a35a28; color: #fff; font-weight: 700; }
+  .port.lan { background: #4d7e8b; border-color: #3a626d; color: #fff; font-weight: 700; }
+  .port.off { background: #e8e8e8; border-color: #ccc; color: #aaa; }
+
+  /* 连线 */
+  .link {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .6mm; min-width: 30mm;
+  }
+  .link .ln { width: 100%; height: 1.6pt; background: #c2733f; position: relative; }
+  .link .ln.fiber { background: #7a6fb0; height: 1.2pt; }
+  .link .ln.plain { background: #4d7e8b; }
+  .link .ln.dashed { background: none; border-top: 1.2pt dashed #999; height: 0; }
+  .link .lbl { font-size: 6.4pt; color: #4a6561; text-align: center; line-height: 1.35; }
+  .link .lbl b { color: #a35a28; }
+  .arrow { font-size: 8pt; color: #999; }
+
+  /* 光纤扇出 */
+  .fan {
+    display: flex; flex-direction: column; gap: 1.4mm; align-items: flex-start;
+    padding-left: 2mm; border-left: 1.2pt solid #7a6fb0;
+  }
+  .fan .row { gap: 2mm; justify-content: flex-start; }
+
+  /* 图例 */
+  .legend {
+    display: flex; gap: 5mm; font-size: 7pt; color: #4a6561; margin-top: 3mm;
+    padding-top: 2mm; border-top: .5pt solid #d8e3e0; flex-wrap: wrap;
+  }
+  .legend i { display: inline-block; width: 7mm; height: 1.6pt; vertical-align: middle; margin-right: 1.4mm; }
+  .legend .f { background: #7a6fb0; height: 1.2pt; }
+  .legend .c { background: #c2733f; }
+  .legend .b { background: #4d7e8b; }
+  .legend .d { background: none; border-top: 1.2pt dashed #999; height: 0; }
+
+  /* 警告框 */
+  .note {
+    background: #fdf4ec; border-left: 2.5pt solid #c2733f; padding: 2mm 3mm;
+    font-size: 7.2pt; color: #7a4a22; margin-top: 2.5mm; line-height: 1.55;
+  }
+  .note b { color: #a33f1f; }
+  .note.blue { background: #eaf1f7; border-left-color: #4d7e8b; color: #2c4a56; }
+  .note.green { background: #eaf5ef; border-left-color: #4a8a68; color: #22543a; }
+
+  .footer {
+    font-size: 6.5pt; color: #9aa8a5; text-align: right; margin-top: 2mm;
+  }
+  .step-num {
+    position: absolute; top: -2.4mm; left: -2.4mm; width: 7mm; height: 7mm;
+    background: #1c3d3a; color: #fff; border-radius: 50%; font-size: 8.5pt;
+    font-weight: 700; text-align: center; line-height: 7mm;
+  }
+  .qcard { padding-top: 3.4mm !important; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 图1：改造前 ==================== -->
+<div class="sheet">
+  <h1>图 1 · 改造前的现状 <span>BEFORE — 光猫当网关，公网 IP 在光猫手上</span></h1>
+  <div class="sub"><span class="stage-tag">阶段 0</span> &nbsp;确认现状，拍照存档后再动手</div>
+
+  <div class="topo">
+    <div class="row">
+      <div class="dev olt">
+        <div class="dev-name">移动 OLT</div>
+        <div class="dev-role">局端机房</div>
+        <div class="dev-spec">XGPON 上行</div>
+      </div>
+      <div class="link">
+        <div class="ln fiber"></div>
+        <div class="lbl">入户光纤<br><b>SC/APC 绿头</b></div>
+      </div>
+      <div class="dev main" style="min-width:74mm">
+        <div class="dev-name">OptiXstar V176-20</div>
+        <div class="dev-role">主网关 · 路由模式</div>
+        <div class="dev-spec">
+          PPPoE 拨号 ✓ &nbsp; NAT ✓ &nbsp; DHCP 192.168.1.x ✓<br>
+          Wi-Fi 开启 &nbsp;|&nbsp; 公网 IP 在此设备
+        </div>
+        <div class="ports">
+          <div class="port hot" title="上联光口">光↑</div>
+          <div class="port lan" title="网口1">1</div>
+          <div class="port lan" title="网口2">2</div>
+          <div class="port lan" title="网口3">3</div>
+          <div class="port lan" title="网口4">4</div>
+          <div class="port hot" title="下行光口">光↓</div>
+        </div>
+      </div>
+      <div class="link">
+        <div class="ln fiber"></div>
+        <div class="lbl">下行光纤<br>GPON</div>
+      </div>
+      <div class="fan">
+        <div class="row">
+          <div class="dev sub">
+            <div class="dev-name">K156-20 ①</div>
+            <div class="dev-role">从网关 · 桥接</div>
+            <div class="dev-spec">纯 AP，出厂即桥接</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="dev sub">
+            <div class="dev-name">K156-20 ②</div>
+            <div class="dev-role">从网关 · 桥接</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="dev sub">
+            <div class="dev-name">K156-20 ③</div>
+            <div class="dev-role">从网关 · 桥接</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:2mm">
+      <div class="dev" style="min-width:52mm; background:#f5f5f5; border-color:#bbb; border-style:dashed;">
+        <div class="dev-name" style="color:#888">GL-MT6000</div>
+        <div class="dev-role" style="background:#aaa">闲置中</div>
+        <div class="dev-spec">你想让它当主路由</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1mm">
+    <table style="width:100%; border-collapse:collapse; font-size:7pt; color:#4a6561">
+      <tr style="background:#1c3d3a; color:#fff">
+        <td style="padding:1.3mm 2mm; border:.4pt solid #1c3d3a; width:22%">功能</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #1c3d3a; width:39%">改造前 · 谁在做</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #1c3d3a; width:39%">改造后 · 谁来做</td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>PPPoE 拨号</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">V176-20（光猫拨）</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef"><b style="color:#22543a">GL-MT6000</b></td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>NAT / 防火墙</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">V176-20</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef"><b style="color:#22543a">GL-MT6000</b></td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>DHCP 发地址</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">V176-20 &nbsp;192.168.<b>1</b>.x</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef">MT6000 &nbsp;192.168.<b>8</b>.x</td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>公网 IP 在哪</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">光猫（端口映射常被锁）</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef"><b style="color:#22543a">MT6000（完全可控）</b></td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>DDNS / 端口转发</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">光猫支持有限</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef"><b style="color:#22543a">MT6000 全功能</b></td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>V176-20 角色</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">光猫 + 路由器 + AP</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef">二层交换机 + AP</td>
+      </tr>
+      <tr>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#fafcfc"><b>K156-20 ×3</b></td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0">AP（挂主网关下行光口）</td>
+        <td style="padding:1.3mm 2mm; border:.4pt solid #d8e3e0; background:#eaf5ef">AP（不变，但需内网回灌）</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="note" style="margin-top:1.4mm">
+    <b>当前瓶颈：</b>网关权在光猫手上 → 端口映射受限于移动光猫（常被锁）→ 无法自由做 DDNS /
+    端口转发 / 代理出口。光猫的 Wi-Fi 性能也一般。
+  </div>
+  <div class="note blue" style="margin-top:1.5mm">
+    <b>看图说话：</b>紫色线 = 光纤（别碰）；橙框 = 拨号设备；蓝框 = 从网关。
+    当前只有 V176-20 一台北向连着运营商，它既是"光猫"又是"路由器"。
+    三个 K156-20 全部挂在它的<b>下行光口</b>上——它们不认识移动，只认识主网关。
+  </div>
+  <div class="footer">A4 横向 · 281 × 194 mm</div>
+</div>
+
+<!-- ==================== 图2：改造后 ==================== -->
+<div class="sheet">
+  <h1>图 2 · 改造后（方案 B-简 · 双线回灌）<span>AFTER — MT6000 拨号，全部光网关降为 AP</span></h1>
+  <div class="sub"><span class="stage-tag ok">推荐方案</span> &nbsp;需要 2 根网线：一根拨号，一根回灌内网</div>
+
+  <div class="topo">
+    <div class="row">
+      <div class="dev olt">
+        <div class="dev-name">移动 OLT</div>
+        <div class="dev-role">局端机房</div>
+      </div>
+      <div class="link">
+        <div class="ln fiber"></div>
+        <div class="lbl">入户光纤<br>别动</div>
+      </div>
+      <div class="dev main" style="min-width:76mm">
+        <div class="dev-name">OptiXstar V176-20</div>
+        <div class="dev-role" style="background:#4a8a68">桥接模式 · 二层交换机 + AP</div>
+        <div class="dev-spec">
+          桥接WAN绑VLAN41 → 网口1 &nbsp;|&nbsp; DHCP ✗ &nbsp; NAT ✗<br>
+          网口3 与下行光口归内网 &nbsp;|&nbsp; LAN IP 192.168.8.2
+        </div>
+        <div class="ports">
+          <div class="port hot" title="上联光口">光↑</div>
+          <div class="port hot" title="桥接WAN绑定">1</div>
+          <div class="port off" title="空">2</div>
+          <div class="port lan" title="内网回灌">3</div>
+          <div class="port off" title="空">4</div>
+          <div class="port hot" title="下行光口">光↓</div>
+        </div>
+      </div>
+      <div class="link">
+        <div class="ln fiber"></div>
+        <div class="lbl">下行光纤<br>GPON</div>
+      </div>
+      <div class="fan">
+        <div class="row">
+          <div class="dev sub">
+            <div class="dev-name">K156-20 ①</div>
+            <div class="dev-role" style="background:#4a8a68">AP · 蓝灯常亮</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="dev sub">
+            <div class="dev-name">K156-20 ②</div>
+            <div class="dev-role" style="background:#4a8a68">AP · 蓝灯常亮</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="dev sub">
+            <div class="dev-name">K156-20 ③</div>
+            <div class="dev-role" style="background:#4a8a68">AP · 蓝灯常亮</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:1mm; align-items:flex-start">
+      <div style="min-width:76mm"></div>
+      <div style="display:flex; flex-direction:column; align-items:center; min-width:30mm">
+        <div style="width:1.8pt; height:5mm; background:#c2733f"></div>
+        <div class="lbl" style="background:#fdf4ec; padding:.6mm 2mm; border-radius:1mm; font-size:6.4pt;"><b>网线A</b> · VLAN41 透出<br>（光猫网口1 → MT6000 2.5G WAN）</div>
+        <div style="width:1.8pt; height:5mm; background:#c2733f"></div>
+      </div>
+      <div style="flex:1"></div>
+    </div>
+
+    <div class="row">
+      <div class="dev router" style="min-width:96mm">
+        <div class="dev-name">GL-MT6000 (Flint 2)</div>
+        <div class="dev-role">主路由 · 唯一网关</div>
+        <div class="dev-spec">
+          PPPoE 拨号 ✓ &nbsp; NAT ✓ &nbsp; DHCP 192.168.8.x ✓<br>
+          DDNS ✓ &nbsp; 端口转发 ✓ &nbsp; 防火墙 ✓ &nbsp; <b>公网 IP 在此</b>
+        </div>
+        <div class="ports">
+          <div class="port hot" title="2.5G WAN">2.5W</div>
+          <div class="port lan" title="2.5G LAN（切成LAN，回灌）">2.5L</div>
+          <div class="port lan" title="1G LAN">1</div>
+          <div class="port lan" title="1G LAN">2</div>
+          <div class="port lan" title="1G LAN">3</div>
+          <div class="port lan" title="1G LAN">4</div>
+        </div>
+      </div>
+      <div class="link" style="min-width:26mm">
+        <div class="lbl"><b>网线B</b><br>内网回灌</div>
+        <div class="ln plain"></div>
+      </div>
+      <div class="dev" style="min-width:44mm; background:#f7fbfa; border-color:#4d7e8b;">
+        <div class="dev-name" style="font-size:8.5pt">↩ 回到 V176 网口3</div>
+        <div class="dev-role">让 K156 活过来</div>
+        <div class="dev-spec">这根线是<br><b>从网关不砖的关键</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:3mm; margin-top:1.5mm">
+    <table style="flex:1.25; border-collapse:collapse; font-size:6.9pt; color:#4a6561">
+      <tr style="background:#1c3d3a; color:#fff">
+        <td style="padding:1.2mm 2mm; border:.4pt solid #1c3d3a">线</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #1c3d3a">从（光猫侧）</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #1c3d3a">到（MT6000侧）</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #1c3d3a">作用</td>
+      </tr>
+      <tr>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0; background:#fdf4ec"><b style="color:#a35a28">网线A</b></td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">V176-20 <b>网口1</b></td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0"><b>2.5G WAN</b> 口</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">宽带 VLAN41 透出 → PPPoE 拨号</td>
+      </tr>
+      <tr>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0; background:#eaf1f7"><b style="color:#2c4a56">网线B</b></td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">V176-20 <b>网口3</b></td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0"><b>2.5G LAN</b> 口（须切成LAN）</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0"><b>内网回灌</b> → 三个 K156-20 拿地址</td>
+      </tr>
+      <tr>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0; background:#f5f5f5">光纤C</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">入户光纤 → 上联光口</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">—</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0"><b>不动</b>（SC/APC 绿头）</td>
+      </tr>
+      <tr>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0; background:#f5f5f5">光纤D×3</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">下行光口（经分光器）</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0">K156-20 上联光口</td>
+        <td style="padding:1.2mm 2mm; border:.4pt solid #d8e3e0"><b>不动</b>，全程只碰网线</td>
+      </tr>
+    </table>
+
+    <div style="flex:1; font-size:6.9pt; color:#4a6561; line-height:1.7; background:#fafcfc; border:.6pt solid #c8d6d3; border-radius:1.5mm; padding:2.2mm 3mm">
+      <b style="color:#1c3d3a; font-size:7.4pt">改完这 6 个字段，光猫才算真桥接</b><br>
+      ☑ 连接模式：PPPoE → <b>桥接</b><br>
+      ☑ VLAN 模式：<b>改写（Tag）</b>（不是透传！）<br>
+      ☑ VLAN ID：<b>保持原值</b>（移动常见 41）<br>
+      ☑ DHCP 使能：<b>取消</b><br>
+      ☑ NAT 使能：<b>取消</b><br>
+      ☑ LAN 端口绑定：<b>只勾网口1</b>；SSID、下行光口全部不勾
+    </div>
+  </div>
+
+  <div class="note green" style="margin-top:1.2mm">
+    <b>核心逻辑：</b>光猫桥接后变成"光转电的二层交换机"。VLAN41 带标签走网线A 给 MT6000 拨号；
+    MT6000 的内网走网线B 灌回光猫，光猫再分给三个 K156-20 —— 于是它们全部变回可用的 AP。
+  </div>
+  <div class="footer">A4 横向 · 281 × 194 mm</div>
+</div>
+
+<!-- ==================== 图3：单线复用 ==================== -->
+<div class="sheet">
+  <h1>图 3 · 备选：单线复用（只有 1 根网线时）<span>VLAN TRUNK — 一根线跑两路</span></h1>
+  <div class="sub"><span class="stage-tag warn">复杂方案</span> &nbsp;能走两根线就别用这个</div>
+
+  <div class="topo">
+    <div class="row" style="gap:2mm">
+      <div class="dev main" style="min-width:72mm">
+        <div class="dev-name">V176-20（桥接）</div>
+        <div class="dev-role" style="background:#4a8a68">网口1 = Trunk 口</div>
+        <div class="dev-spec">
+          网口1 同时承载两个 VLAN：<br>
+          <b>VLAN 41</b>（tagged，宽带）<br>
+          <b>VLAN 1</b>（untagged，内网）
+        </div>
+        <div class="ports">
+          <div class="port hot">1</div>
+          <div class="port off">2</div>
+          <div class="port lan">3</div>
+          <div class="port off">4</div>
+          <div class="port hot">光↓</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3mm; min-width:64mm">
+        <div style="display:flex; align-items:center; gap:1.5mm">
+          <div class="lbl" style="font-size:6.6pt; text-align:right; width:20mm">VLAN 41<br>tagged</div>
+          <div class="ln" style="flex:1; background:#c2733f; height:1.8pt"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:1.5mm">
+          <div class="lbl" style="font-size:6.6pt; text-align:right; width:20mm">VLAN 1<br>untagged</div>
+          <div class="ln" style="flex:1; background:#4d7e8b; height:1.8pt"></div>
+        </div>
+        <div style="text-align:center; font-size:6.5pt; color:#7a6fb0; border-top:.5pt dashed #ccc; padding-top:1mm">
+          同一根网线 · 同一对线芯
+        </div>
+      </div>
+
+      <div class="dev router" style="min-width:78mm">
+        <div class="dev-name">GL-MT6000</div>
+        <div class="dev-role">主路由</div>
+        <div class="dev-spec">
+          2.5G WAN 口上建两个逻辑接口：<br>
+          <b>eth1.41</b>（802.1Q）→ PPPoE 拨号<br>
+          <b>eth1</b>（本体）→ 加入 br-lan<br>
+          PPPoE + NAT + DHCP 192.168.8.1
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:3mm">
+      <div style="display:flex; align-items:flex-start; gap:3mm">
+        <div style="font-size:7pt; color:#4a6561; line-height:1.6; background:#f4f6fb; padding:2.4mm 3.4mm; border-radius:1.5mm; border:.6pt solid #b8c4da">
+          <b style="color:#4a5d82">光猫侧要配：</b><br>
+          ① 桥接 WAN：VLAN模式=改写(Tag)，VLAN ID=41<br>
+          ② 网口1 绑定 VLAN 41(tag) + VLAN 1(untag)<br>
+          ③ 网口3/4 与下行光口 全部绑 VLAN 1<br>
+          ④ DHCP 关闭，LAN IP 改 192.168.8.2
+        </div>
+        <div style="font-size:7pt; color:#4a6561; line-height:1.6; background:#fdf4ec; padding:2.4mm 3.4mm; border-radius:1.5mm; border:.6pt solid #e0bc9c">
+          <b style="color:#a35a28">MT6000 侧要配：</b><br>
+          ① 建 device <code>eth1.41</code> type=8021q vid=41<br>
+          ② wan.device = eth1.41，proto = pppoe<br>
+          ③ br-lan 的 ports 里加上 eth1<br>
+          ④ MTU 1492
+        </div>
+        <div style="font-size:7pt; color:#4a6561; line-height:1.6; background:#eaf5ef; padding:2.4mm 3.4mm; border-radius:1.5mm; border:.6pt solid #a8ccb8">
+          <b style="color:#22543a">验证：</b><br>
+          ① <code>ip -d link show eth1.41</code> 有 802.1Q<br>
+          ② <code>ifstatus wan</code> 拿到公网 IP<br>
+          ③ 光猫 Wi-Fi 能上网（证明回灌成功）<br>
+          ④ K156-20 蓝灯常亮
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>为什么最后才推荐它：</b>VLAN 配错的表现是"能连上 Wi-Fi 但上不了网"，
+    或者"MT6000 能上网但三个从网关全红"，现场极难判断是哪一环。
+    如果有条件走两根线，省下这一整层的故障可能。
+  </div>
+  <div class="footer">A4 横向 · 281 × 194 mm</div>
+</div>
+
+<!-- ==================== 图4：公网访问链路 ==================== -->
+<div class="sheet">
+  <h1>图 4 · 公网访问链路（DDNS + 端口映射）<span>PUBLIC ACCESS — 从外网回到家里</span></h1>
+  <div class="sub">前提：已拿到真公网 IPv4，或已启用 IPv6。移动家宽默认 CGNAT，必须先确认。</div>
+
+  <div class="topo" style="justify-content:flex-start; gap:2.4mm">
+    <!-- 上行链路 -->
+    <!-- 第一行：外部 → 解析 → 运营商 -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:2.4mm; margin-top:3mm">
+      <div class="dev" style="min-width:42mm; background:#f0eef6; border-color:#7a6fb0">
+        <div class="dev-name" style="font-size:8.5pt">📱 你在外面</div>
+        <div class="dev-role" style="background:#7a6fb0">手机 / 笔记本</div>
+        <div class="dev-spec">4G/5G 或公司网络</div>
+      </div>
+      <div class="link" style="min-width:24mm">
+        <div class="lbl">① 访问<br><b>home.域名.com</b></div>
+        <div class="ln plain"></div>
+      </div>
+      <div class="dev" style="min-width:40mm; background:#fff8e8; border-color:#c9a227">
+        <div class="dev-name" style="font-size:8.5pt">🌐 DNS / DDNS</div>
+        <div class="dev-role" style="background:#c9a227">Cloudflare / 阿里云</div>
+        <div class="dev-spec">A 记录 → 当前公网 IP<br><b>必须灰云（DNS only）</b></div>
+      </div>
+      <div class="link" style="min-width:24mm">
+        <div class="lbl">② 解析出<br><b>112.38.x.x</b></div>
+        <div class="ln"></div>
+      </div>
+      <div class="dev" style="min-width:36mm">
+        <div class="dev-name" style="font-size:8.5pt">☁️ 移动 BRAS</div>
+        <div class="dev-role">公网接入</div>
+        <div class="dev-spec">CGNAT 时到此为止</div>
+      </div>
+    </div>
+
+    <!-- 折行箭头 -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:2mm; margin:.6mm 0">
+      <div style="font-size:6.8pt; color:#7a6fb0">③ 入站 · ⚠️ 移动可能封 80/443，务必用高位端口</div>
+      <div style="font-size:10pt; color:#7a6fb0">▼</div>
+    </div>
+
+    <!-- 第二行：运营商 → 路由器 → 内网 -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:2.4mm">
+      <div class="dev" style="min-width:42mm; background:#f0eef6; border-color:#7a6fb0">
+        <div class="dev-name" style="font-size:8.5pt">🌐 公网侧</div>
+        <div class="dev-role" style="background:#7a6fb0">WAN 入站</div>
+        <div class="dev-spec">112.38.x.x:8443</div>
+      </div>
+      <div class="link" style="min-width:26mm">
+        <div class="lbl">到达<br>路由器 WAN</div>
+        <div class="ln"></div>
+      </div>
+      <div class="dev router" style="min-width:62mm">
+        <div class="dev-name" style="font-size:9pt">GL-MT6000</div>
+        <div class="dev-role">NAT + 防火墙 + 端口转发 + DDNS</div>
+        <div class="dev-spec">
+          WAN: 112.38.x.x（动态，会变）<br>
+          端口转发：外部 8443 → 内网 192.168.8.100:443<br>
+          <b>wan input = 拒绝；只放行被映射的端口</b>
+        </div>
+      </div>
+      <div class="link" style="min-width:26mm">
+        <div class="lbl">④ DNAT<br>改写目标地址</div>
+        <div class="ln plain"></div>
+      </div>
+      <div class="dev" style="min-width:48mm; background:#f4f6fb; border-color:#6b7fa8">
+        <div class="dev-name" style="font-size:9pt">内网设备</div>
+        <div class="dev-role" style="background:#6b7fa8">192.168.8.100</div>
+        <div class="dev-spec">NAS / SSH / WireGuard<br>只监听内网，不直接暴露</div>
+      </div>
+    </div>
+
+    <!-- DDNS 闭环 -->
+    <div style="margin:2mm auto 0; padding:2mm 4mm; background:#fff8e8; border:.7pt dashed #c9a227; border-radius:1.5mm; display:flex; align-items:center; gap:3mm; font-size:6.9pt; color:#8a6d10">
+      <b>DDNS 闭环：</b>MT6000 每小时查一次自己的公网 IP → 发现变了 → 调 Cloudflare API 改 A 记录
+      <span style="color:#a35a28">（这一步是自动的，但 Cloudflare 必须设成灰云，橙云会代理掉流量导致非标端口不通）</span>
+    </div>
+
+    <!-- 三条路 -->
+    <div style="display:flex; gap:2.4mm; margin-top:2.4mm">
+      <div style="flex:1; border:.7pt solid #e0bc9c; border-radius:1.5mm; padding:2.2mm 2.8mm; background:#fffaf5">
+        <div style="font-size:8pt; font-weight:700; color:#a35a28; margin-bottom:1mm">① 公网 IPv4 + DDNS + 端口映射</div>
+        <div style="font-size:6.7pt; color:#7a4a22; line-height:1.6">
+          <b>优点：</b>最灵活，满速，任意端口任意协议<br>
+          <b>缺点：</b>移动大概率不给；给了也可能封 80/443<br>
+          <b>适用：</b>要跑多个服务、要完整控制权
+        </div>
+      </div>
+      <div style="flex:1; border:.7pt solid #a8ccb8; border-radius:1.5mm; padding:2.2mm 2.8mm; background:#f4fbf7">
+        <div style="font-size:8pt; font-weight:700; color:#22543a; margin-bottom:1mm">② IPv6 + DDNS（移动用户首选）</div>
+        <div style="font-size:6.7pt; color:#2a5a3e; line-height:1.6">
+          <b>优点：</b>移动覆盖好，不用申请，无 NAT，无端口封禁<br>
+          <b>缺点：</b>你在外面的网络也得支持 IPv6；前缀会变<br>
+          <b>适用：</b>手机 4G/5G 访问家里 （手机普遍有 IPv6）
+        </div>
+      </div>
+      <div style="flex:1; border:.7pt solid #b8c4da; border-radius:1.5mm; padding:2.2mm 2.8mm; background:#f6f8fc">
+        <div style="font-size:8pt; font-weight:700; color:#4a5d82; margin-bottom:1mm">③ Tailscale / WireGuard 兜底</div>
+        <div style="font-size:6.7pt; color:#3d4d6b; line-height:1.6">
+          <b>优点：</b>Tailscale 完全不需要公网 IP；WG 只需 1 个 UDP 口<br>
+          <b>缺点：</b>Tailscale 打洞失败时走中继，速度受限<br>
+          <b>适用：</b>前两条都不通时的可靠退路
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:1.6mm">
+      <b>⚠️ 安全底线：</b>不要暴露 3389(RDP)、22(SSH)、5000(群晖)、8080。全部改成 10000+ 高位端口，
+      并且把 SSH 改成只允许密钥。<b>只暴露 WireGuard 一个 UDP 端口是最安全的架构</b>——
+      其他所有服务都藏在 VPN 里面访问。
+    </div>
+  </div>
+  <div class="footer">A4 横向 · 281 × 194 mm</div>
+</div>
+
+<!-- ==================== 图5：决策流程 ==================== -->
+<div class="sheet">
+  <h1>图 5 · 动手前决策流程 <span>DECISION FLOW — 先回答这 4 个问题</span></h1>
+
+  <div class="topo" style="justify-content:flex-start; gap:3mm">
+    <div style="display:flex; gap:3mm; align-items:stretch; margin-top:3mm">
+      <!-- Q1 -->
+      <div class="dev main qcard" style="min-width:56mm; position:relative">
+        <div class="step-num">1</div>
+        <div class="dev-name" style="font-size:9pt">拿到宽带账号密码<br>+ VLAN ID 了吗？</div>
+        <div class="dev-spec" style="margin-top:1.6mm">
+          账号：装维单/10086<br>
+          密码：手机号后6位或123456<br>
+          VLAN：光猫原配置里抄
+        </div>
+        <div style="margin-top:2mm; font-size:7pt">
+          <div style="color:#4a8a68">✅ 有 → 继续</div>
+          <div style="color:#b5573f">❌ 没有 → <b>停手</b>，先要到</div>
+        </div>
+      </div>
+
+      <div class="arrow" style="align-self:center">→</div>
+
+      <!-- Q2 -->
+      <div class="dev main qcard" style="min-width:56mm; position:relative">
+        <div class="step-num">2</div>
+        <div class="dev-name" style="font-size:9pt">家里到房间<br>有网线吗？</div>
+        <div class="dev-spec" style="margin-top:1.6mm">
+          判断：看墙上网口<br>或者看是不是靠<br>FTTR 光纤穿墙
+        </div>
+        <div style="margin-top:2mm; font-size:7pt">
+          <div style="color:#4a5d82">有网线 → 方案 A 可行<br>（弃 FTTR）</div>
+          <div style="color:#4a8a68">没网线 → 必须保<br>K156-20</div>
+        </div>
+      </div>
+
+      <div class="arrow" style="align-self:center">→</div>
+
+      <!-- Q3 -->
+      <div class="dev main qcard" style="min-width:56mm; position:relative">
+        <div class="step-num">3</div>
+        <div class="dev-name" style="font-size:9pt">光猫到 MT6000<br>能走几根线？</div>
+        <div class="dev-spec" style="margin-top:1.6mm">
+          2 根 = 双线回灌<br>
+          1 根 = VLAN 复用<br>
+          0 根 = 先解决布线
+        </div>
+        <div style="margin-top:2mm; font-size:7pt">
+          <div style="color:#4a8a68">2根 → <b>方案 B-简</b> ★</div>
+          <div style="color:#a35a28">1根 → 方案 B（VLAN）</div>
+        </div>
+      </div>
+
+      <div class="arrow" style="align-self:center">→</div>
+
+      <!-- Q4 -->
+      <div class="dev main qcard" style="min-width:56mm; position:relative">
+        <div class="step-num">4</div>
+        <div class="dev-name" style="font-size:9pt">WAN IP 是<br>公网段吗？</div>
+        <div class="dev-spec" style="margin-top:1.6mm">
+          10.x / 100.64-127.x<br>
+          172.16-31.x / 192.168.x<br>
+          → 都不是公网
+        </div>
+        <div style="margin-top:2mm; font-size:7pt">
+          <div style="color:#4a8a68">是公网 → DDNS<br>+ 端口映射</div>
+          <div style="color:#7a6fb0">不是 → IPv6<br>或 Tailscale</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:2mm; padding:3mm; background:#eaf5ef; border-radius:2mm; border:.8pt solid #4a8a68">
+      <div style="font-size:8pt; color:#22543a; line-height:1.7">
+        <b style="font-size:9pt">✅ 最终推荐路径：</b><br>
+        V176-20 改桥接（保留下行光口给 K156）→
+        <b>网线A</b>：网口1 → MT6000 2.5G WAN（PPPoE 拨号）→
+        <b>网线B</b>：MT6000 2.5G LAN → 网口3（内网回灌）→
+        三个 K156-20 恢复为 AP → 统一 SSID 实现漫游 →
+        MT6000 上配 DDNS + 端口转发（或 IPv6 / Tailscale 兜底）
+      </div>
+    </div>
+
+    <div style="display:flex; gap:3mm; margin-top:1mm">
+      <div class="note" style="flex:1; margin-top:0">
+        <b>⚠️ 三条铁律</b><br>
+        ① 改桥接前必须拿到账号密码 + VLAN ID<br>
+        ② 改之前每页配置都拍照<br>
+        ③ 手边留一根网线 + 能拨号的笔记本
+      </div>
+      <div class="note blue" style="flex:1; margin-top:0">
+        <b>💡 一定要知道的</b><br>
+        K156-20 出厂就是桥接模式。你说的"全部改桥接"实际上是"主网关也改桥接"，
+        而主网关一桥接，三个从网关默认就断了 —— 必须做内网回灌。
+      </div>
+    </div>
+
+    <div style="display:flex; gap:3mm; margin-top:1mm">
+      <div style="flex:1.35; border:.7pt solid #c8d6d3; border-radius:1.5mm; padding:2.4mm 3mm; background:#fafcfc">
+        <div style="font-size:8pt; font-weight:700; color:#1c3d3a; margin-bottom:1.4mm">⏱ 耗时预估（一次做对的情况）</div>
+        <table style="width:100%; border-collapse:collapse; font-size:6.8pt; color:#4a6561">
+          <tr style="background:#eef4f3">
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0"><b>准备收集信息</b></td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">30 分钟</td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">账号/密码/VLAN/超密/拍照</td>
+          </tr>
+          <tr>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0"><b>光猫改桥接</b></td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">10 分钟</td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">改 6 个字段 + 关 DHCP</td>
+          </tr>
+          <tr style="background:#eef4f3">
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0"><b>MT6000 拨号</b></td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">10 分钟</td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">PPPoE + VLAN（若单线）</td>
+          </tr>
+          <tr>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0"><b>内网回灌 + 从网关复活</b></td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">15 分钟</td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">等蓝灯、逐个验证</td>
+          </tr>
+          <tr style="background:#eef4f3">
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0"><b>Wi-Fi 统一 + 漫游</b></td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">20 分钟</td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">SSID/密码/信道错开</td>
+          </tr>
+          <tr>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0"><b>DDNS + 端口映射</b></td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">30 分钟</td>
+            <td style="padding:1mm 1.6mm; border:.4pt solid #d8e3e0">含外网实测</td>
+          </tr>
+          <tr style="background:#e8f4f2">
+            <td style="padding:1.2mm 1.6mm; border:.4pt solid #b8d4d0"><b>合计</b></td>
+            <td style="padding:1.2mm 1.6mm; border:.4pt solid #b8d4d0"><b>≈ 2 小时</b></td>
+            <td style="padding:1.2mm 1.6mm; border:.4pt solid #b8d4d0">第一次做建议留半天</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="flex:1; border:.7pt solid #e0bc9c; border-radius:1.5mm; padding:2.4mm 3mm; background:#fffaf5">
+        <div style="font-size:8pt; font-weight:700; color:#a35a28; margin-bottom:1.4mm">📋 动手前必拍（存到原始配置截图/）</div>
+        <div style="font-size:6.9pt; color:#7a4a22; line-height:1.75">
+          ☐ 状态 → 网络侧信息（WAN 列表、IP、VLAN）<br>
+          ☐ 网络 → 宽带设置（<b>所有</b> WAN 条目）<br>
+          ☐ 网络 → LAN 设置（IP 段、DHCP 开关）<br>
+          ☐ 网络 → LAN 口多业务 / VLAN 绑定<br>
+          ☐ 网络 → WLAN 设置（SSID/密码/信道）<br>
+          ☐ 安全 → 防火墙 / 端口映射 / DMZ<br>
+          ☐ 管理 → TR-069（记 ACS 地址，判断会不会被重置）<br>
+          ☐ 首页设备信息（型号、硬件版、软件版）
+        </div>
+        <div style="font-size:6.6pt; color:#a35a28; margin-top:1.6mm; border-top:.4pt dashed #e0bc9c; padding-top:1.2mm">
+          <b>这 8 张图是你唯一的回滚依据。</b>改完再想拍就来不及了。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">A4 横向 · 281 × 194 mm</div>
+</div>
+
+</body>
+</html>

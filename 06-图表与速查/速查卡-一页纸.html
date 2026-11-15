@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>速查卡 · 一页纸贴墙上</title>
+<style>
+  @page { size: A4; margin: 9mm; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:"Source Han Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    background:#eef2f5; padding:5mm; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .page {
+    width:192mm; height:279mm; background:#fff; margin:0 auto; padding:4.5mm 6mm;
+    display:flex; flex-direction:column; gap:1.9mm; overflow:hidden;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  @media print { body{padding:0;background:#fff} .page{margin:0} }
+  header { border-bottom:2.4pt solid #1c3d3a; padding-bottom:1.4mm; }
+  h1 { font-size:14.5pt; color:#1c3d3a; }
+  h1 small { font-size:8pt; color:#7d9a96; font-weight:400; margin-left:3mm; }
+  .tagline { font-size:7.3pt; color:#6b8480; margin-top:.6mm; }
+
+  .sec { display:flex; flex-direction:column; gap:1.2mm; }
+  .sec-h {
+    font-size:8.8pt; font-weight:700; color:#fff; background:#1c3d3a;
+    padding:.95mm 2.2mm; border-radius:1mm; display:flex; align-items:center; gap:2mm;
+  }
+  .sec-h .n {
+    width:5.2mm; height:5.2mm; background:#fff; color:#1c3d3a; border-radius:50%;
+    font-size:7.5pt; text-align:center; line-height:5.2mm;
+  }
+  .sec-h .hint { margin-left:auto; font-size:7pt; font-weight:400; opacity:.75; }
+  .sec-h.warn { background:#b5573f; }
+  .sec-h.ok { background:#4a8a68; }
+  .sec-h.blue { background:#4d7e8b; }
+
+  table { width:100%; border-collapse:collapse; font-size:7.4pt; color:#3d5551; }
+  th { background:#eef4f3; padding:.9mm 1.6mm; text-align:left; border:.4pt solid #c8d8d4; font-weight:700; }
+  td { padding:.7mm 1.6mm; border:.4pt solid #dde7e4; vertical-align:top; line-height:1.32; }
+  td.k { font-weight:700; color:#1c3d3a; background:#fafcfc; white-space:nowrap; }
+
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:2.5mm; }
+  ul { list-style:none; font-size:7.1pt; color:#3d5551; line-height:1.5; }
+  ul li { padding-left:4mm; position:relative; }
+  ul li::before { content:"☐"; position:absolute; left:0; color:#9ab3ae; }
+  ul.done li::before { content:"✓"; color:#4a8a68; font-weight:700; }
+  ul.x li::before { content:"✕"; color:#b5573f; font-weight:700; }
+
+  .box { border-left:2.5pt solid #c2733f; background:#fdf4ec; padding:1.5mm 2.4mm; font-size:7.1pt; color:#7a4a22; line-height:1.5; border-radius:0 1mm 1mm 0; }
+  .box b { color:#a33f1f; }
+  .box.red { border-left-color:#b5573f; background:#fdeeec; color:#7a2a1e; }
+  .box.green { border-left-color:#4a8a68; background:#eaf5ef; color:#22543a; }
+  .box.blue { border-left-color:#4d7e8b; background:#eaf1f7; color:#2c4a56; }
+
+  .kbd { font-family:Consolas,monospace; background:#eef2f5; padding:.2mm 1.2mm; border-radius:.6mm; font-size:7pt; color:#1c3d3a; }
+  code { font-family:Consolas,monospace; background:#f4f6f8; padding:.2mm 1mm; border-radius:.6mm; font-size:6.9pt; }
+
+  .big { font-size:8.1pt; line-height:1.62; color:#2c4a56; }
+  .big b { color:#a35f1f; }
+  footer { margin-top:auto; border-top:.5pt solid #d8e3e0; padding-top:1mm; font-size:6.3pt; color:#9aa8a5; display:flex; justify-content:space-between; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>速查卡 <small>OptiXstar FTTR 桥接改造 · 一页纸</small></h1>
+    <div class="tagline">贴墙上用。详细步骤见 03 / 05 章节，出事见 07 回滚手册。</div>
+  </header>
+
+  <!-- 1 核心结论 -->
+  <div class="sec">
+    <div class="sec-h ok"><span class="n">✓</span>先说结论<span class="hint">3 句话</span></div>
+    <div class="box green big">
+      <b>① 不能"全部桥接"</b> —— K156-20 出厂就是桥接，你说的实际是"主网关也桥接"。<br>
+      <b>② 主网关一桥接，三个 K156-20 默认全断</b> —— 必须把内网引回主网关的网口3。<br>
+      <b>③ 推荐：MT6000 拨号 + 两根网线（一进一回）</b> —— 全屋光纤覆盖保住，公网 IP 归 MT6000 管。
+    </div>
+  </div>
+
+  <!-- 2 改桥接 6 个字段 -->
+  <div class="sec">
+    <div class="sec-h warn"><span class="n">1</span>光猫改桥接：只改这 6 项<span class="hint">网络 → 宽带设置 → INTERNET 那条</span></div>
+    <table>
+      <tr><td class="k">连接模式</td><td>PPPoE → <b>桥接（Bridge）</b></td><td class="k">DHCP 使能</td><td><b>取消勾选</b></td></tr>
+      <tr><td class="k">VLAN 模式</td><td><b>改写（Tag）</b>← 别选透传</td><td class="k">NAT 使能</td><td><b>取消勾选</b></td></tr>
+      <tr><td class="k">VLAN ID</td><td>保持原值（移动常见 <b>41</b>）</td><td class="k">端口绑定</td><td>只勾<b>网口1</b>；SSID/下行光口全不勾</td></tr>
+    </table>
+    <div class="box red">
+      <b>动手前必须有：</b>① 宽带账号 ② 宽带密码 ③ VLAN ID ④ 光猫超管密码。<b>缺一个就停手。</b>
+      改前把这 8 页全拍照：状态/网络侧信息、宽带设置、LAN 设置、LAN口多业务、WLAN、安全、TR-069、设备信息。
+    </div>
+  </div>
+
+  <!-- 3 接线 -->
+  <div class="sec">
+    <div class="sec-h blue"><span class="n">2</span>接线：两根网线<span class="hint">全程只碰网线，不碰光纤</span></div>
+    <table>
+      <tr><th style="width:16%">线</th><th style="width:27%">从</th><th style="width:27%">到</th><th>作用</th></tr>
+      <tr><td class="k" style="color:#a35a28">网线A</td><td>V176-20 <b>网口1</b></td><td>MT6000 <b>2.5G WAN</b></td><td>宽带透出 → PPPoE 拨号</td></tr>
+      <tr><td class="k" style="color:#2c4a56">网线B</td><td>V176-20 <b>网口3</b></td><td>MT6000 <b>2.5G LAN</b>（须切成LAN）</td><td><b>内网回灌</b> → K156-20 复活</td></tr>
+      <tr><td class="k" style="color:#888">光纤</td><td>入户光纤 / 下行光口</td><td>不动</td><td>SC/APC 绿头，<b>别拔别弯</b></td></tr>
+    </table>
+  </div>
+
+  <!-- 4 MT6000 -->
+  <div class="sec">
+    <div class="sec-h"><span class="n">3</span>MT6000 关键设置<span class="hint">192.168.8.1</span></div>
+    <div class="cols">
+      <table>
+        <tr><td class="k">WAN</td><td>PPPoE + 账号密码，MTU <b>1492</b></td></tr>
+        <tr><td class="k">LAN</td><td>192.168.8.1，DHCP 池 100~249</td></tr>
+        <tr><td class="k">DNS</td><td>223.5.5.5 / 119.29.29.29</td></tr>
+        <tr><td class="k">Wi-Fi</td><td>与光猫同 SSID/密码/<b>同加密方式</b></td></tr>
+      </table>
+      <table>
+        <tr><td class="k">信道</td><td>主网关与 MT6000 <b>必须错开</b></td></tr>
+        <tr><td class="k">5G 频宽</td><td>80MHz（不要 160）</td></tr>
+        <tr><td class="k">802.11r</td><td><b>关闭</b>（跨品牌易掉线）</td></tr>
+        <tr><td class="k">UPnP</td><td><b>关闭</b></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5 验收 -->
+  <div class="sec">
+    <div class="sec-h ok"><span class="n">4</span>验收：全绿才算完<span class="hint">逐条勾</span></div>
+    <div class="cols">
+      <ul>
+        <li>MT6000 WAN 拿到 IP，且是<b>公网段</b></li>
+        <li><code>curl myip.ipip.net</code> = WAN IP</li>
+        <li>三个 K156-20 <b>全部蓝灯常亮</b></li>
+        <li>每个 AP 的 Wi-Fi 都能上网</li>
+        <li>每台 K156 的网口插电脑能上网</li>
+      </ul>
+      <ul>
+        <li>所有设备 IP 都是 192.168.<b>8</b>.x</li>
+        <li>所有设备出口 IP <b>相同</b></li>
+        <li>跨 AP 能访问 NAS（无 AP 隔离）</li>
+        <li>走动漫游不掉线，丢包 ≤3</li>
+        <li>光猫后台能进（192.168.8.2）</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 6 公网 -->
+  <div class="sec">
+    <div class="sec-h blue"><span class="n">5</span>公网 IP：先判断，再申请<span class="hint">移动 95% 是 CGNAT</span></div>
+    <table>
+      <tr><th style="width:30%">WAN 口 IP 是</th><th style="width:22%">判定</th><th>怎么办</th></tr>
+      <tr><td class="k" style="color:#22543a">112.x 等公网段</td><td>✅ 真公网</td><td>直接 DDNS + 端口映射</td></tr>
+      <tr><td class="k" style="color:#b5573f">100.64~100.127.x</td><td>❌ CGNAT</td><td>申请（可能被拒）→ 走 IPv6 / Tailscale</td></tr>
+      <tr><td class="k" style="color:#b5573f">10.x / 172.16~31.x</td><td>❌ 内网</td><td>同上</td></tr>
+    </table>
+    <div class="box blue">
+      <b>申请话术（10086 转宽带报修）：</b>"我家装了监控/NAS，需要外网远程访问，现在拿到的是 100.64 的内网地址，
+      麻烦帮我申请一个<b>动态</b>公网 IPv4，不需要固定 IP。不便开通请转<b>宽带技术部门</b>确认政策。"
+      <b>别说</b>要做服务器/代理/网站。
+    </div>
+  </div>
+
+  <!-- 7 故障 -->
+  <div class="sec">
+    <div class="sec-h warn"><span class="n">!</span>故障速查<span class="hint">对症抓药</span></div>
+    <table>
+      <tr><th style="width:42%">现象</th><th>先查这个</th></tr>
+      <tr><td>拨号 678 / 651</td><td>光猫 VLAN 模式必须是<b>改写</b>，VLAN ID 核对</td></tr>
+      <tr><td>拨号 691</td><td>账号密码错 / 账号后缀（<code>@139.gd</code>）/ 试 MAC 克隆</td></tr>
+      <tr><td>MT6000 能上网，光猫 Wi-Fi 和 K156 全断</td><td><b>网线B 没接</b>，或网口3 没划到内网</td></tr>
+      <tr><td>K156-20 红灯</td><td>下行光口被绑给了 WAN；"LAN口多业务"没勾 FTTR</td></tr>
+      <tr><td>网速只有一半</td><td>插在 1G 口了 / 网线是五类以下</td></tr>
+      <tr><td>用几天突然断网，桥接被改回</td><td><b>移动 TR-069 重置</b> → 重新改，或考虑关 TR-069 / 改旁路由</td></tr>
+    </table>
+  </div>
+
+  <footer>
+    <span>OPTIXSTAR · FTTR BRIDGE QUICKREF</span>
+    <span>A4 / 210 × 297 mm</span>
+  </footer>
+</div>
+</body>
+</html>
