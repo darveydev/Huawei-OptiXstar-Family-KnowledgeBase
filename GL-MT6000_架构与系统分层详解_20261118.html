@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GL-MT6000 架构与系统分层详解 · Flint 2</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#1c2128; --line:#30363d;
+  --fg:#e6edf3; --fg2:#9198a1; --fg3:#6e7681;
+  --acc:#58a6ff; --acc2:#3fb950; --warn:#d29922; --danger:#f85149; --purple:#bc8cff; --cyan:#39c5cf; --orange:#ffa657;
+  --mono:'Cascadia Code','Consolas','SF Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:-apple-system,'Segoe UI Variable','Segoe UI','Microsoft YaHei',sans-serif;
+  font-size:16px; line-height:1.75;
+  display:flex;
+}
+/* ===== 侧边栏 ===== */
+#sidebar{
+  position:fixed; left:0; top:0; bottom:0; width:280px;
+  background:var(--bg2); border-right:1px solid var(--line);
+  overflow-y:auto; padding:22px 0 40px; z-index:100;
+  transition:transform .25s;
+}
+#sidebar::-webkit-scrollbar{width:8px}
+#sidebar::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px}
+#sidebar h1{font-size:1.05rem;padding:0 20px 6px;color:#fff;letter-spacing:.3px}
+#sidebar .sub{font-size:.78rem;color:var(--fg3);padding:0 20px 16px;font-family:var(--mono)}
+#sidebar .grp{font-size:.72rem;color:var(--fg3);letter-spacing:1.4px;text-transform:uppercase;padding:16px 20px 6px;font-weight:600}
+#sidebar a{
+  display:block; padding:6px 20px 6px 20px; color:var(--fg2);
+  text-decoration:none; font-size:.875rem; border-left:2px solid transparent;
+  transition:.12s;
+}
+#sidebar a:hover{background:var(--bg3);color:var(--fg)}
+#sidebar a.on{color:var(--acc);border-left-color:var(--acc);background:rgba(88,166,255,.08)}
+/* ===== 主体 ===== */
+main{margin-left:280px; max-width:1180px; padding:44px 52px 120px; min-width:0; flex:1}
+h2{
+  font-size:1.6rem; margin:56px 0 18px; padding-bottom:10px;
+  border-bottom:1px solid var(--line); color:#fff; scroll-margin-top:20px;
+}
+h2 .num{color:var(--acc);font-family:var(--mono);font-size:1rem;margin-right:10px;opacity:.8}
+h3{font-size:1.14rem;margin:32px 0 12px;color:var(--cyan);scroll-margin-top:20px}
+h4{font-size:.98rem;margin:22px 0 8px;color:var(--orange)}
+p{margin:10px 0;color:var(--fg)}
+ul,ol{margin:10px 0 10px 26px}
+li{margin:5px 0}
+li::marker{color:var(--fg3)}
+strong{color:#fff;font-weight:640}
+em{color:var(--warn);font-style:normal}
+code{
+  font-family:var(--mono); font-size:.86em; background:rgba(110,118,129,.22);
+  padding:.15em .42em; border-radius:5px; color:var(--purple); white-space:nowrap;
+}
+pre{
+  background:var(--bg2); border:1px solid var(--line); border-radius:9px;
+  padding:15px 18px; overflow-x:auto; margin:14px 0; font-size:.83rem; line-height:1.65;
+}
+pre code{background:none;padding:0;color:var(--fg);white-space:pre;font-size:inherit}
+pre .c{color:var(--fg3)}
+pre .k{color:var(--orange)}
+pre .s{color:var(--acc2)}
+pre .p{color:var(--cyan)}
+/* 表格 */
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:9px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{
+  background:var(--bg3);text-align:left;padding:10px 14px;font-weight:600;
+  color:#fff;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+td{padding:9px 14px;border-bottom:1px solid rgba(48,54,61,.55);vertical-align:top;color:var(--fg2)}
+td:first-child{color:var(--fg)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(88,166,255,.035)}
+td code{font-size:.83em}
+/* 提示块 */
+.box{border-radius:9px;padding:14px 18px;margin:16px 0;border-left:3px solid;font-size:.9rem}
+.box p:first-child{margin-top:0}.box p:last-child{margin-bottom:0}
+.box b{display:block;margin-bottom:5px;font-size:.93rem}
+.info{background:rgba(88,166,255,.07);border-color:var(--acc)}.info b{color:var(--acc)}
+.ok{background:rgba(63,185,80,.07);border-color:var(--acc2)}.ok b{color:var(--acc2)}
+.warn{background:rgba(210,153,34,.08);border-color:var(--warn)}.warn b{color:var(--warn)}
+.dang{background:rgba(248,81,73,.08);border-color:var(--danger)}.dang b{color:var(--danger)}
+/* 图容器 */
+figure{margin:24px 0;background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:20px}
+figure svg{display:block;width:100%;height:auto;max-width:100%}
+figcaption{text-align:center;color:var(--fg3);font-size:.8rem;margin-top:14px;font-family:var(--mono)}
+/* 卡片 */
+.grid{display:grid;gap:14px;margin:18px 0}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.card h5{font-size:.93rem;color:var(--acc);margin-bottom:7px;font-weight:600}
+.card p{font-size:.85rem;color:var(--fg2);margin:0}
+.card .kv{font-family:var(--mono);font-size:.78rem;color:var(--fg3);margin-top:6px}
+/* 徽章 */
+.tag{display:inline-block;font-size:.71rem;padding:.1em .5em;border-radius:20px;font-family:var(--mono);vertical-align:middle;margin-left:4px}
+.t-ok{background:rgba(63,185,80,.15);color:var(--acc2);border:1px solid rgba(63,185,80,.3)}
+.t-off{background:rgba(110,118,129,.15);color:var(--fg3);border:1px solid rgba(110,118,129,.3)}
+.t-warn{background:rgba(210,153,34,.15);color:var(--warn);border:1px solid rgba(210,153,34,.3)}
+.t-run{background:rgba(88,166,255,.15);color:var(--acc);border:1px solid rgba(88,166,255,.3)}
+/* 顶部 */
+.hero{
+  background:linear-gradient(135deg,rgba(88,166,255,.13),rgba(188,140,255,.09));
+  border:1px solid rgba(88,166,255,.28);border-radius:14px;padding:30px 34px;margin-bottom:12px;
+}
+.hero h1{font-size:2rem;color:#fff;letter-spacing:-.4px;margin-bottom:8px}
+.hero .tl{color:var(--acc);font-family:var(--mono);font-size:.86rem;margin-bottom:16px}
+.hero p{color:var(--fg2);font-size:.93rem;margin:8px 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.meta span{
+  font-family:var(--mono);font-size:.75rem;background:rgba(0,0,0,.32);
+  border:1px solid var(--line);padding:3px 10px;border-radius:20px;color:var(--fg2);
+}
+#menuBtn{display:none}
+/* 移动端表格：给最小宽度让内容不挤压，靠容器横向滚动 */
+@media(max-width:760px){
+  .tw{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    position:relative;
+    box-shadow:inset -14px 0 12px -12px rgba(88,166,255,.45);
+  }
+  table{min-width:640px}
+  th,td{padding:8px 10px;font-size:.82rem}
+  td code{white-space:normal;word-break:break-all}
+  pre{font-size:.76rem;padding:12px 13px}
+  code{white-space:normal;word-break:break-word}
+  ul,ol{margin-left:20px}
+}
+@media(max-width:1024px){
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.7)}
+  main{margin-left:0;padding:24px 20px 90px}
+  #menuBtn{
+    display:flex;position:fixed;bottom:22px;right:22px;z-index:200;
+    width:52px;height:52px;border-radius:50%;background:var(--acc);border:none;
+    align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;
+    box-shadow:0 4px 20px rgba(88,166,255,.45);color:#0d1117;
+  }
+  h2{font-size:1.35rem;margin-top:40px}
+  .hero{padding:22px}
+  .hero h1{font-size:1.5rem}
+}
+@media print{
+  #sidebar,#menuBtn{display:none}
+  main{margin:0;max-width:100%;padding:0}
+  body{background:#fff;color:#111}
+  figure,.card,.tw,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <h1>GL-MT6000 深度拆解</h1>
+  <div class="sub">Flint 2 · 只读取证版</div>
+  <div class="grp">总览</div>
+  <a href="#s0">0 · 阅读指引</a>
+  <a href="#s1">1 · 硬件架构</a>
+  <a href="#s2">2 · 存储与分区</a>
+  <div class="grp">系统骨架</div>
+  <a href="#s3">3 · 系统分层模型</a>
+  <a href="#s4">4 · 启动流程</a>
+  <a href="#s5">5 · 根目录逐项</a>
+  <a href="#s6">6 · /etc 深入</a>
+  <div class="grp">运行时</div>
+  <a href="#s7">7 · 网络数据面</a>
+  <a href="#s8">8 · 服务进程全景</a>
+  <a href="#s9">9 · 端口地图</a>
+  <a href="#s10">10 · DNS 链路</a>
+  <div class="grp">扩展玩法</div>
+  <a href="#s11">11 · 三套 Web 前端</a>
+  <a href="#s12">12 · 扩展接口清单</a>
+  <a href="#s13">13 · 可玩方向</a>
+  <a href="#s14">14 · 只读排查手册</a>
+  <a href="#s15">15 · 风险与现状</a>
+  <a href="#s16">附录</a>
+</nav>
+
+<main>
+
+<div class="hero">
+  <h1>GL-MT6000 详细架构与系统分层</h1>
+  <div class="tl">GL.iNet Flint 2 · MediaTek MT7986A (Filogic 830) · OpenWrt 21.02-SNAPSHOT (iStoreOS Style)</div>
+  <p>本文是对你这台路由器的一次<strong>完整只读拆解</strong>。所有结论来自 SSH 与 HTTP 的实测输出，不是从型号资料上抄的——因为这台机器跑的是 <strong>wukongdaily 定制固件</strong>，目录结构、overlay 文件系统、Web 前端分层都和官方 GL 固件不一样。</p>
+  <p>目标：让你在<strong>不动现有配置</strong>的前提下，清楚知道这台机器每一层在哪、能改什么、改哪里会出问题。</p>
+  <div class="meta">
+    <span>取证时间 2026-11-18 19:5x</span>
+    <span>uptime 2h13m</span>
+    <span>全程只读</span>
+    <span>uci changes = 空</span>
+  </div>
+</div>
+
+<h2 id="s0"><span class="num">00</span>阅读指引与本次取证声明</h2>
+
+<div class="box ok">
+  <b>取证方式与零改动声明</b>
+  <p>全部数据通过 <code>SSH (dropbear:22)</code> 只读命令（<code>cat</code> / <code>ls</code> / <code>df</code> / <code>ip</code> / <code>uci show</code> / <code>ps</code> / <code>netstat</code>）采集，外加 HTTP 抓取静态资源列表。</p>
+  <p>未执行任何 <code>uci set / commit / apply</code>，未 <code>opkg install / remove</code>，未写任何文件，<strong>未重启路由器</strong>。<code>uci changes</code> 收尾为空，可自证。</p>
+</div>
+
+<h3>这台机器最容易被搞错的 5 件事（先看这个）</h3>
+<div class="tw"><table>
+<tr><th style="width:22%">常见错误认知</th><th style="width:34%">实际情况</th><th>后果</th></tr>
+<tr><td>overlay 是 <code>ubifs</code>，跟普通 OpenWrt 一样</td><td>是 <strong>f2fs 镜像挂在 loop0</strong>，底层是 eMMC 的 <code>mmcblk0p7</code></td><td>照搬 <code>remount_ubifs</code> / ubi 那一套教程会完全对不上</td></tr>
+<tr><td>LuCI 在 <code>:8080</code></td><td><strong>80/443 是 nginx</strong>，<strong>8080/8443 是 uhttpd</strong>，两套 Web 服务器并存</td><td>改错 nginx 配置会影响 GL 后台；改 uhttpd 只影响 LuCI</td></tr>
+<tr><td>GL 后台就是 LuCI</td><td><strong>三套独立前端</strong>：GL 后台 / LuCI / iStore</td><td>在 LuCI 改了 GL 管理的配置，GL 后台可能覆盖回去</td></tr>
+<tr><td>5 个 LAN 口是交换芯片 <code>swconfig</code></td><td>是 <strong>DSA 架构</strong>，<code>lan1-5</code> 是 <code>eth0</code> 的 DSA 从属口</td><td>写 <code>swconfig</code> / <code>/etc/config/network</code> 里 <code>switch</code> 段全部无效</td></tr>
+<tr><td>1GB 内存可以随便装</td><td>内存 989MB 但 <strong>overlay 只用了 592MB / 7.2GB</strong>，空间够；<strong>内存才是瓶颈</strong>（AdGuardHome 虚存报 1.2G）</td><td>装太多常驻服务会 OOM，不是空间问题</td></tr>
+</table></div>
+
+<h2 id="s1"><span class="num">01</span>硬件架构</h2>
+
+<p>MT7986A 是联发科的 <strong>Filogic 830</strong> 平台，四核 Cortex-A53。这颗 SoC 的关键点在于它<strong>自带硬件 NAT 加速（HNAT）</strong>和<strong>双频 Wi-Fi 6 射频</strong>，所以 CPU 本身很闲（实测 load average 0.11），压力都在转发平面。</p>
+
+<figure>
+<svg viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <linearGradient id="socG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c3a5e"/><stop offset="100%" stop-color="#16283d"/>
+    </linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#3fb950"/>
+    </marker>
+  </defs>
+
+  <!-- SoC 大框 -->
+  <rect x="180" y="60" width="640" height="400" rx="14" fill="url(#socG)" stroke="#58a6ff" stroke-width="2"/>
+  <text x="500" y="90" text-anchor="middle" fill="#58a6ff" font-size="17" font-weight="700">MediaTek MT7986A · Filogic 830</text>
+  <text x="500" y="110" text-anchor="middle" fill="#8b949e" font-size="11.5" font-family="monospace">ARMv8 Cortex-A53 ×4 @ 2.0GHz · 12nm</text>
+
+  <!-- CPU -->
+  <rect x="210" y="128" width="180" height="86" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="300" y="150" text-anchor="middle" fill="#e6edf3" font-size="12.5" font-weight="600">CPU 四核 A53</text>
+  <text x="300" y="170" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">cpu0 · cpu1 · cpu2 · cpu3</text>
+  <text x="300" y="188" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">aes · sha1/2 · crc32</text>
+  <text x="300" y="204" text-anchor="middle" fill="#3fb950" font-size="10" font-family="monospace">load 0.11 (闲置)</text>
+
+  <!-- 硬件加速 -->
+  <rect x="410" y="128" width="180" height="86" rx="8" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="500" y="150" text-anchor="middle" fill="#d29922" font-size="12.5" font-weight="600">HNAT 硬件 NAT</text>
+  <text x="500" y="170" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">mtkhnat + mtk_warp</text>
+  <text x="500" y="188" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">shortcut-fe · flow_offload</text>
+  <text x="500" y="204" text-anchor="middle" fill="#d29922" font-size="10" font-family="monospace">转发不过 CPU 内核</text>
+
+  <!-- 网络引擎 -->
+  <rect x="610" y="128" width="180" height="86" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="700" y="150" text-anchor="middle" fill="#e6edf3" font-size="12.5" font-weight="600">以太网 MAC</text>
+  <text x="700" y="170" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">mtk_soc_eth (DSA)</text>
+  <text x="700" y="188" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">eth0 = 交换组</text>
+  <text x="700" y="204" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">eth1 = 独立 WAN</text>
+
+  <!-- WIFI -->
+  <rect x="210" y="232" width="380" height="90" rx="8" fill="#0d1117" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="400" y="254" text-anchor="middle" fill="#bc8cff" font-size="12.5" font-weight="600">Wi-Fi 6 双频 (mt_wifi)</text>
+  <text x="400" y="274" text-anchor="middle" fill="#9198a1" font-size="11">2.4G  4×4 MIMO  HE40  ·  ch8 (2447MHz)</text>
+  <text x="400" y="292" text-anchor="middle" fill="#9198a1" font-size="11">5G    4×4 MIMO  HE160 · ch52 (5260MHz)</text>
+  <text x="400" y="311" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">射频 mt798611 / mt798612 · AX6000</text>
+
+  <!-- 存储 -->
+  <rect x="610" y="232" width="180" height="90" rx="8" fill="#0d1117" stroke="#39c5cf"/>
+  <text x="700" y="254" text-anchor="middle" fill="#39c5cf" font-size="12.5" font-weight="600">eMMC 8GB</text>
+  <text x="700" y="274" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">mmcblk0 · 7634944 KB</text>
+  <text x="700" y="292" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">7 个分区</text>
+  <text x="700" y="311" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">KD008GB1</text>
+
+  <!-- 内存 -->
+  <rect x="210" y="346" width="290" height="80" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="355" y="368" text-anchor="middle" fill="#e6edf3" font-size="12.5" font-weight="600">DDR4 内存 1GB</text>
+  <text x="355" y="388" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">MemTotal 1013052 kB</text>
+  <text x="355" y="406" text-anchor="middle" fill="#3fb950" font-size="10.5" font-family="monospace">Available 501836 kB (50%)</text>
+
+  <!-- USB -->
+  <rect x="520" y="346" width="270" height="80" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="655" y="368" text-anchor="middle" fill="#e6edf3" font-size="12.5" font-weight="600">USB 3.0 ×1</text>
+  <text x="655" y="388" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">xHCI · usb1 / usb2 总线</text>
+  <text x="655" y="406" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">当前未接设备</text>
+
+  <!-- 底部输出 -->
+  <line x1="700" y1="214" x2="700" y2="232" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="300" y1="322" x2="300" y2="346" stroke="#30363d"/>
+  <line x1="700" y1="322" x2="700" y2="346" stroke="#30363d"/>
+
+  <!-- 外部：WAN -->
+  <rect x="40" y="130" width="112" height="70" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="96" y="155" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">WAN 口</text>
+  <text x="96" y="173" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">2.5Gbps</text>
+  <text x="96" y="190" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">eth1</text>
+  <line x1="152" y1="165" x2="176" y2="165" stroke="#3fb950" stroke-width="1.8" marker-end="url(#ar2)"/>
+
+  <!-- 外部：LAN -->
+  <rect x="40" y="300" width="112" height="130" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="96" y="322" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">LAN ×5</text>
+  <text x="96" y="342" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">1Gbps 各口</text>
+  <text x="96" y="360" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">lan1 可变 WAN</text>
+  <text x="96" y="378" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">lan2-5 固定</text>
+  <text x="96" y="400" text-anchor="middle" fill="#d29922" font-size="9.5" font-family="monospace">DSA 从属 eth0</text>
+  <text x="96" y="418" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">br-lan 桥接</text>
+  <line x1="152" y1="365" x2="176" y2="365" stroke="#58a6ff" stroke-width="1.8" marker-end="url(#ar)"/>
+
+  <!-- 外部：无线 -->
+  <rect x="840" y="240" width="120" height="74" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="900" y="264" text-anchor="middle" fill="#bc8cff" font-size="12" font-weight="600">无线终端</text>
+  <text x="900" y="282" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">ra0  → 2.4G</text>
+  <text x="900" y="298" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">rax0 → 5G</text>
+  <line x1="840" y1="277" x2="826" y2="277" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#ar)" stroke-dasharray="4 3"/>
+
+  <!-- 上行 -->
+  <rect x="40" y="40" width="112" height="56" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="96" y="62" text-anchor="middle" fill="#9198a1" font-size="11">上级网关</text>
+  <text x="96" y="80" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">10.177.255.254</text>
+  <line x1="96" y1="96" x2="96" y2="126" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ar2)" stroke-dasharray="4 3"/>
+
+  <text x="500" y="500" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">实测：CPU 4 核 load 0.11 · 温度 51.6°C · 全机 209 线程</text>
+  <text x="500" y="522" text-anchor="middle" fill="#6e7681" font-size="10.5" font-family="monospace">转发靠 HNAT 硬件直通，CPU 只做控制面 —— 所以四核长期接近 0%</text>
+</svg>
+<figcaption>图 1 · GL-MT6000 硬件结构与数据路径（数据来源：/proc/cpuinfo、/proc/meminfo、lsmod、ip link、iw dev）</figcaption>
+</figure>
+
+<h3>1.1 硬件实测参数</h3>
+<div class="tw"><table>
+<tr><th style="width:20%">项目</th><th style="width:42%">实测值</th><th>取证来源</th></tr>
+<tr><td>SoC</td><td>MT7986A，compatible <code>mediatek,mt7986a</code></td><td><code>/proc/device-tree/compatible</code></td></tr>
+<tr><td>CPU</td><td>ARMv8 Cortex-A53 ×4（part 0xd03, rev 4），含 AES/SHA/CRC32 指令</td><td><code>/proc/cpuinfo</code></td></tr>
+<tr><td>内存</td><td>1013052 kB ≈ 989 MB，可用 501836 kB</td><td><code>/proc/meminfo</code></td></tr>
+<tr><td>存储</td><td>eMMC <code>mmcblk0</code> 7,634,944 KB ≈ 7.28 GB，型号 <code>008GB1</code>，MID <code>0x11</code>，SN <code>0x76d24195</code></td><td><code>/proc/partitions</code>、<code>/sys/class/mmc_host</code></td></tr>
+<tr><td>温度</td><td>51.62 °C（<code>cpu-thermal</code>，单热区）</td><td><code>/sys/class/thermal/thermal_zone0</code></td></tr>
+<tr><td>WAN 口</td><td><code>eth1</code>，协商速率 <strong>1000 Mbps</strong>（口是 2.5G 的，当前对端只跑千兆）</td><td><code>/sys/class/net/eth1/speed</code></td></tr>
+<tr><td>LAN 表现状</td><td><code>eth0</code> 协商 <strong>2500 Mbps</strong>；<code>lan3</code> 有链路（running），lan1/2/4/5 空</td><td><code>ip -d link show</code>、<code>speed</code></td></tr>
+<tr><td>无线</td><td>2.4G <code>ra0</code> ch8/HE40 · 5G <code>rax0</code> ch52/HE160（均 4×4，<code>4addr: on</code>）</td><td><code>iw dev ... info</code></td></tr>
+<tr><td>USB</td><td>xHCI 控制器存在（usb1/usb2 两条总线），<strong>当前无任何设备接入</strong></td><td><code>/sys/bus/usb/devices/</code></td></tr>
+<tr><td>加速引擎</td><td><code>mtkhnat</code> + <code>mtk_warp</code> + <code>shortcut_fe</code> + <code>xt_FLOWOFFLOAD</code> + <code>nf_flow_table_hw</code></td><td><code>lsmod</code></td></tr>
+</table></div>
+
+<div class="box warn">
+  <b>为什么"千兆 WAN"这点值得注意</b>
+  <p>MT6000 的 WAN 口物理能力是 2.5Gbps，但实测 <code>/sys/class/net/eth1/speed</code> 是 <strong>1000</strong>——说明上级设备（光猫/交换机）只给到千兆。你当前宽带是移动 CGNAT，实际出口远低于千兆，所以这不是瓶颈。但如果将来换千兆以上宽带，要记得检查这一环。</p>
+</div>
+
+<h3>1.2 有线和无线是怎么接的（DSA 架构，不是 swconfig）</h3>
+
+<p>这台机器用的是内核 <strong>DSA（Distributed Switch Architecture）</strong>，不是老的 <code>swconfig</code>。区别很实际：</p>
+
+<ul>
+<li><code>lan1</code> ~ <code>lan5</code> 是<strong>独立的内核网络接口</strong>，可以直接 <code>ip link</code> / <code>tc</code> / <code>tcpdump</code> 操作，也能单独设 IP。</li>
+<li>它们都是 <code>eth0</code> 的 DSA 从属口（<code>iflink</code> 指向 eth0）。用 <code>ip -d link</code> 能看到 <code>portname p0…p5</code>、<code>switchid 00000000</code>。</li>
+<li><strong><code>/etc/config/network</code> 里没有 <code>config switch</code> 段</strong>——写了也不生效。VLAN 要用 <code>config bridge-vlan</code>（DSA 风格），或直接操作 <code>bridge vlan</code>。</li>
+</ul>
+
+<h4>端口角色映射（来自 <code>/etc/config/eth_ports_config_map</code>）</h4>
+<div class="tw"><table>
+<tr><th>逻辑名</th><th>内核口</th><th>丝印</th><th>type</th><th>port_group</th><th>当前模式</th><th>可否当 WAN</th></tr>
+<tr><td>wan</td><td><code>eth1</code></td><td>WAN</td><td>dsa</td><td>2</td><td><span class="tag t-ok">wan</span></td><td>是</td></tr>
+<tr><td>secondwan</td><td><code>lan1</code></td><td>WAN/LAN1</td><td>dsa</td><td>3</td><td><span class="tag t-off">lan</span></td><td><strong>是（可切成第二 WAN）</strong></td></tr>
+<tr><td>lan2</td><td><code>lan2</code></td><td>LAN2</td><td>dsa</td><td>3</td><td><span class="tag t-off">lan</span></td><td>否</td></tr>
+<tr><td>lan3</td><td><code>lan3</code></td><td>LAN3</td><td>dsa</td><td>3</td><td><span class="tag t-off">lan</span></td><td>否</td></tr>
+<tr><td>lan4</td><td><code>lan4</code></td><td>LAN4</td><td>dsa</td><td>3</td><td><span class="tag t-off">lan</span></td><td>否</td></tr>
+<tr><td>lan5</td><td><code>lan5</code></td><td>LAN5</td><td>dsa</td><td>3</td><td><span class="tag t-off">lan</span></td><td>否</td></tr>
+</table></div>
+
+<div class="box info">
+  <b>玩法提示：lan1 是个"隐藏财富"</b>
+  <p>丝印写着 <strong>WAN/LAN1</strong>，<code>support_wan='1'</code>。这意味着 <code>lan1</code> 可以在 GL 后台（网络 → 端口）被切成<strong>第二个 WAN</strong>，配合已装的 <code>kmwan</code>（多 WAN 故障切换）可以做双线备份。当前 <code>kmwan</code> 服务是启用的。</p>
+</div>
+
+<h4>桥接结构</h4>
+<pre><code>br-lan (192.168.8.1/24, MAC 94:82:b2:00:be:11)
+ ├─ lan1  (p5)  <span class="c">← 也可切为 WAN</span>
+ ├─ lan2  (p0)  <span class="c">← NO-CARRIER</span>
+ ├─ lan3  (p1)  <span class="c">← forwarding（有设备）</span>
+ ├─ lan4  (p2)
+ ├─ lan5  (p3)
+ ├─ dheth0      <span class="c">← 配置里有，但运行时不存在（GL 动态创建，用于 USB 网卡/移动网络）</span>
+ ├─ ra0        <span class="c">← 2.4G AP，hairpin on, mcast_to_unicast on</span>
+ └─ rax0       <span class="c">← 5G AP，同上</span>
+
+br-guest  <span class="c">← bridge_empty=1，无成员，访客网络已禁用</span>
+br-iot    <span class="c">← bridge_empty=1，无成员，IoT 网络已禁用</span></code></pre>
+
+<p><code>stp_state 0</code>（不开 STP）、<code>vlan_filtering 0</code>（不做 VLAN 过滤）、<code>mcast_snooping 0</code>（组播嗅探关闭）。这三点决定了：<strong>接环路设备会立刻风暴</strong>，而且 <code>br-lan</code> 上的 IPTV 组播不会自动优化。</p>
+
+<h2 id="s2"><span class="num">02</span>存储与分区：本机最关键的结构差异</h2>
+
+<div class="box dang">
+  <b>这一节是全文最重要的部分——它决定了你所有"改系统"的操作方式</b>
+  <p>绝大多数 OpenWrt 教程默认你的 overlay 是 <code>ubifs</code> 挂在 <code>ubi0_2</code> 上。这台机器<strong>不是</strong>。它是 <strong>f2fs 文件系统镜像</strong>，用 <code>loop</code> 设备挂载，镜像文件存在 eMMC 的第 7 个分区里。</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="ar3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#d29922"/>
+    </marker>
+  </defs>
+  <text x="500" y="28" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="700">eMMC mmcblk0 (7.28 GB) 分区布局</text>
+
+  <!-- 分区条 -->
+  <rect x="52" y="52" width="36" height="70" rx="3" fill="#3a2a1a" stroke="#d29922"/>
+  <text x="70" y="84" text-anchor="middle" fill="#d29922" font-size="11" font-weight="700" font-family="monospace">p1</text>
+  <text x="70" y="102" text-anchor="middle" fill="#8a6d3b" font-size="8" font-family="monospace">512K</text>
+  <rect x="92" y="52" width="36" height="70" rx="3" fill="#1a2a3a" stroke="#58a6ff"/>
+  <text x="110" y="84" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="700" font-family="monospace">p2</text>
+  <text x="110" y="102" text-anchor="middle" fill="#3d6a94" font-size="8" font-family="monospace">2M</text>
+  <rect x="132" y="52" width="36" height="70" rx="3" fill="#1a2a3a" stroke="#58a6ff"/>
+  <text x="150" y="84" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="700" font-family="monospace">p3</text>
+  <text x="150" y="102" text-anchor="middle" fill="#3d6a94" font-size="8" font-family="monospace">2M</text>
+  <rect x="172" y="52" width="36" height="70" rx="3" fill="#1a2a3a" stroke="#58a6ff"/>
+  <text x="190" y="84" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="700" font-family="monospace">p4</text>
+  <text x="190" y="102" text-anchor="middle" fill="#3d6a94" font-size="8" font-family="monospace">2M</text>
+  <rect x="212" y="52" width="36" height="70" rx="3" fill="#1a2a3a" stroke="#58a6ff"/>
+  <text x="230" y="84" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="700" font-family="monospace">p5</text>
+  <text x="230" y="102" text-anchor="middle" fill="#3d6a94" font-size="8" font-family="monospace">2M</text>
+  <rect x="252" y="52" width="76" height="70" rx="3" fill="#2a1a3a" stroke="#bc8cff"/>
+  <text x="290" y="84" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="700" font-family="monospace">p6</text>
+  <text x="290" y="102" text-anchor="middle" fill="#6e7681" font-size="8" font-family="monospace">kernel 32M</text>
+  <rect x="332" y="52" width="620" height="70" rx="3" fill="#1a3325" stroke="#3fb950" stroke-width="2"/>
+  <text x="642" y="82" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">p7 · rootfs  7,589,376 KB ≈ 7.24 GB</text>
+  <text x="642" y="102" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">start=91136 (sector) · 内含 squashfs + f2fs 镜像</text>
+
+  <!-- 分区表 -->
+  <text x="60" y="152" fill="#e6edf3" font-size="11.5" font-weight="600">分区表（PARTNAME 来自内核 uevent，非猜测）</text>
+  <g font-family="monospace" font-size="10.5" fill="#9198a1">
+    <text x="60" y="174">p1  u-boot-env      512 KB   Bootloader 环境变量（MAC、序列号、bootcmd）</text>
+    <text x="60" y="192">p2  factory        2048 KB   出厂校准数据（Wi-Fi 校准、MAC 池）—— <tspan fill="#f85149">改坏会丢 Wi-Fi</tspan></text>
+    <text x="60" y="210">p3  fip            2048 KB   ARM Trusted Firmware (BL31) + U-Boot 部分</text>
+    <text x="60" y="228">p4  cfg            2048 KB   GL 私有配置区（备份/恢复用）</text>
+    <text x="60" y="246">p5  log            2048 KB   崩溃日志 / panic 转储区</text>
+    <text x="60" y="264">p6  kernel        32768 KB   内核镜像（FIT/legacy uImage）</text>
+    <text x="60" y="282">p7  rootfs      7589376 KB   <tspan fill="#3fb950">根文件系统 + 所有你的改动都在这里</tspan></text>
+  </g>
+
+  <!-- 关键：p7 内部结构 -->
+  <rect x="60" y="310" width="880" height="200" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="500" y="336" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">p7 内部结构（这是"魔改"所在）</text>
+
+  <!-- squashfs -->
+  <rect x="90" y="356" width="290" height="70" rx="6" fill="#1a2a3a" stroke="#58a6ff"/>
+  <text x="235" y="380" text-anchor="middle" fill="#58a6ff" font-size="11.5" font-weight="600">squashfs 只读根</text>
+  <text x="235" y="398" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">/dev/root → /rom  (75.8 MB, 100% used)</text>
+  <text x="235" y="414" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">固件原始文件，不可写</text>
+
+  <!-- f2fs -->
+  <rect x="400" y="356" width="510" height="70" rx="6" fill="#1a3325" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="655" y="378" text-anchor="middle" fill="#3fb950" font-size="11.5" font-weight="600">f2fs 镜像文件（可写）</text>
+  <text x="655" y="396" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">losetup /dev/loop0 ← p7, offset 79364096 B</text>
+  <text x="655" y="412" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">挂载为 /overlay  7.2 GB · 已用 592 MB · 剩 6.6 GB</text>
+
+  <!-- 箭头 down -->
+  <line x1="235" y1="426" x2="235" y2="456" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="655" y1="426" x2="655" y2="456" stroke="#3fb950" stroke-width="1.5"/>
+
+  <!-- overlayfs -->
+  <rect x="180" y="458" width="640" height="46" rx="6" fill="#2a1a3a" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="500" y="480" text-anchor="middle" fill="#bc8cff" font-size="11.5" font-weight="600">overlayfs:/overlay  →  /   （rw）</text>
+  <text x="500" y="496" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">lowerdir=/rom  upperdir=/overlay/upper  workdir=/overlay/work</text>
+
+  <text x="500" y="540" text-anchor="middle" fill="#d29922" font-size="10.5" font-family="monospace">关键：remount_ubifs 这种写法在这里无效 —— 本机没有 ubifs，是 f2fs</text>
+</svg>
+<figcaption>图 2 · 存储分层：squashfs 只读镜像 + f2fs 可写 overlay，通过 overlayfs 合并成 "/"</figcaption>
+</figure>
+
+<h3>2.1 为什么这个设计很聪明（也为什么它让你玩法更多）</h3>
+
+<ul>
+<li><strong>刷不坏</strong>：固件本体在 squashfs 里只读，你的所有改动都在 f2fs 镜像里。恢复出厂 = 清空镜像，固件本体毫发无伤。</li>
+<li><strong>空间不是问题</strong>：7.2 GB overlay，<strong>已用 592 MB，还剩 6.6 GB</strong>。这意味着你<strong>可以装 Docker、可以装 OpenClash 全套规则库、可以本地跑一个轻量服务</strong>。这跟 MT3000 那种 142MB 小 flash（要精打细算）是两个世界。</li>
+<li><strong>f2fs 比 ubifs 更适合大容量 eMMC</strong>：有 GC、discard、后台整理（进程里能看到 <code>f2fs_flush-7:0</code>、<code>f2fs_gc-7:0</code>）。</li>
+<li><strong>但它不支持 ubi 的"原子写入/坏块全盘重映射"</strong>：eMMC 有自己的磨损均衡，所以够用，但<strong>掉电保护不如 ubifs</strong>。别在它上面放高度依赖掉电安全的数据。</li>
+</ul>
+
+<h3>2.2 实测空间账</h3>
+<pre><code>Filesystem                Size      Used Available Use% Mounted on
+/dev/root                75.8M     75.8M         0 100% /rom       <span class="c">← 只读镜像，100% 是正常的</span>
+tmpfs                   494.7M      5.3M    489.3M   1% /tmp        <span class="c">← 内存盘，重启清空</span>
+/dev/loop0                7.2G    591.9M      6.6G   8% /overlay    <span class="c">← 你的可写空间</span>
+overlayfs:/overlay        7.2G    591.9M      6.6G   8% /</code></pre>
+
+<h4>overlay 里 592MB 都是谁占的</h4>
+<div class="tw"><table>
+<tr><th style="width:34%">路径</th><th style="width:14%">占用</th><th>内容说明</th></tr>
+<tr><td><code>/overlay/upper/etc/openclash</code></td><td><strong>69.9 MB</strong></td><td>OpenClash 全部：mihomo 内核 54.7MB、GeoSite.dat 10.6MB、规则库、订阅配置</td></tr>
+<tr><td><code>/overlay/upper/usr/sbin</code></td><td><strong>42.0 MB</strong></td><td>GL 自家大程序：FastNet 11.8MB、quickstart 10.1MB、ddnstod 9.7MB、linkease-app-entry 8.3MB</td></tr>
+<tr><td><code>/overlay/upper/usr/lib</code></td><td><strong>21.5 MB</strong></td><td>libnetifyd 5.1MB、libcrypto 3.9MB、libruby 2.9MB、lua 库 2.2MB</td></tr>
+<tr><td><code>/overlay/upper/usr/share</code></td><td><strong>17.3 MB</strong></td><td>其中 openclash 脚本+面板 14.8MB，quickstart 2.0MB</td></tr>
+<tr><td><code>/overlay/upper/www</code></td><td><strong>8.5 MB</strong></td><td>luci-static 6.6MB（含 argon 主题）、i18n 1.1MB、upload 0.7MB</td></tr>
+<tr><td><code>/overlay/upper/etc/AdGuardHome</code></td><td>4.6 MB</td><td>AGH 配置 + 过滤列表 1.txt 4.6MB</td></tr>
+<tr><td><code>/overlay/upper/etc/netifyd</code></td><td>3.2 MB</td><td>DPI 协议特征库</td></tr>
+<tr><td><code>/overlay/upper/lib</code></td><td>1.0 MB</td><td>内核模块补充</td></tr>
+<tr><td><code>/overlay/upper/etc/config</code></td><td>1.3 MB</td><td><strong>所有 UCI 配置</strong>（这是你要备份的东西）</td></tr>
+<tr><td>其他（sbin/bin/root/opt）</td><td>&lt; 0.7 MB</td><td>少量脚本与状态文件</td></tr>
+</table></div>
+
+<div class="box ok">
+  <b>结论：这台机器要装东西，空间完全不是问题</b>
+  <p>剩 6.6 GB。装 Docker（约 150MB）、装 <code>luci-app-*</code> 全家桶、放规则库、甚至跑个 nginx + PHP 都够。<strong>真正的瓶颈是 1GB 内存</strong>——目前 AdGuardHome 虚存已报 1239 MB（含 mmap，实际 RSS 要小得多），再叠几个常驻服务就会开始 swap/回收。要装重服务之前先看 <code>/proc/meminfo</code> 的 <code>MemAvailable</code>。</p>
+</div>
+
+<h3>2.3 挂载表全览（含每个挂载点的作用）</h3>
+<div class="tw"><table>
+<tr><th style="width:22%">设备</th><th style="width:16%">挂载点</th><th style="width:12%">类型</th><th style="width:10%">选项</th><th>作用 / 注意</th></tr>
+<tr><td><code>/dev/root</code></td><td><code>/rom</code></td><td>squashfs</td><td>ro</td><td>固件只读镜像。<strong>想看"出厂原版文件"就来这里</strong>，例如 <code>/rom/etc/config/network</code> 就是未被修改的原始版本</td></tr>
+<tr><td><code>proc</code></td><td><code>/proc</code></td><td>proc</td><td>rw</td><td>内核与进程信息</td></tr>
+<tr><td><code>sysfs</code></td><td><code>/sys</code></td><td>sysfs</td><td>rw</td><td>设备树、驱动、LED、GPIO、网卡状态</td></tr>
+<tr><td><code>cgroup2</code></td><td><code>/sys/fs/cgroup</code></td><td>cgroup2</td><td>rw</td><td>统一 cgroup v2 —— <strong>可以给进程限内存/CPU</strong>（跑容器时有用）</td></tr>
+<tr><td><code>tmpfs</code></td><td><code>/tmp</code></td><td>tmpfs</td><td>rw</td><td>494MB 内存盘。<strong>重启全丢</strong>。而且 <code>/var</code> 是 <code>/tmp</code> 的软链，所以 <code>/var/log</code> 也是内存里的</td></tr>
+<tr><td><code>/dev/loop0</code></td><td><code>/overlay</code></td><td>f2fs</td><td>rw</td><td>可写层实体。<code>background_gc=on, discard, inline_xattr, inline_data</code></td></tr>
+<tr><td><code>overlayfs:/overlay</code></td><td><code>/</code></td><td>overlay</td><td>rw</td><td>合并视图。<code>lowerdir=/, upperdir=/overlay/upper, workdir=/overlay/work</code></td></tr>
+<tr><td><code>tmpfs</code></td><td><code>/dev</code></td><td>tmpfs</td><td>rw</td><td>只有 512 KB，仅设备节点</td></tr>
+<tr><td><code>devpts</code></td><td><code>/dev/pts</code></td><td>devpts</td><td>rw</td><td>伪终端（SSH / ttyd 用）</td></tr>
+<tr><td><code>debugfs</code></td><td><code>/sys/kernel/debug</code></td><td>debugfs</td><td>rw</td><td>内核调试。<strong>抓 HNAT 连接表、看 offload 命中率就在这里</strong></td></tr>
+<tr><td><code>none</code></td><td><code>/sys/fs/bpf</code></td><td>bpf</td><td>rw</td><td>BPF 文件系统（<code>nftables</code>/<code>tc</code> 的 offload 会用）</td></tr>
+<tr><td><code>pstore</code></td><td><code>/sys/fs/pstore</code></td><td>pstore</td><td>rw</td><td><strong>崩溃后保留的 dmesg</strong> —— 排查死机/重启问题先看这里</td></tr>
+</table></div>
+
+<div class="box info">
+  <b><code>/var → /tmp</code> 这个软链的实际影响</b>
+  <p>根目录里 <code>var -> tmp</code>。所以：日志在内存里（重启即失，看历史日志要 <code>logread</code> 或 <code>/etc/gl_logread</code> 的持久化机制）、<code>/var/lib</code> 下的数据（如 vnstat 数据库）重启就没了、DHCP 租约在 <code>/tmp/dhcp.leases</code>。这也是为什么 OpenClash 的日志在 <code>/tmp/openclash.log</code>、AGH 的会话在内存里。</p>
+</div>
+<h2 id="s3"><span class="num">03</span>系统分层模型</h2>
+
+<p>理解这台路由器的关键，是把"一个盒子"拆成<strong>六个纵向层</strong>。每一层有自己的配置文件、自己的 Web 界面、自己的改法和自己的坑。很多人改坏路由器，是因为<strong>在错误的层动手</strong>——比如想改 Wi-Fi 却去改 iptables。</p>
+
+<figure>
+<svg viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="dn" markerWidth="8" markerHeight="8" refX="4" refY="7" orient="auto">
+      <path d="M0,0 L4,8 L8,0 z" fill="#6e7681"/>
+    </marker>
+  </defs>
+
+  <!-- L0 硬件 -->
+  <rect x="50" y="40" width="900" height="58" rx="8" fill="#1a0f0f" stroke="#f85149" stroke-width="1.5"/>
+  <text x="72" y="64" fill="#f85149" font-size="12.5" font-weight="700">L0 · 硬件 / Bootloader</text>
+  <text x="72" y="84" fill="#9198a1" font-size="10.5" font-family="monospace">MT7986A · eMMC p1 u-boot-env / p2 factory / p3 fip / p6 kernel</text>
+  <text x="930" y="76" text-anchor="end" fill="#6e7681" font-size="10" font-family="monospace">动它=变砖</text>
+
+  <!-- L1 内核 -->
+  <rect x="50" y="112" width="900" height="76" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="72" y="136" fill="#58a6ff" font-size="12.5" font-weight="700">L1 · Linux 内核 5.4.238</text>
+  <text x="72" y="156" fill="#9198a1" font-size="10.5" font-family="monospace">mtk_soc_eth(DSA) · mt_wifi · mtkhnat · nf_flow_table · overlayfs · f2fs · nftables/iptables</text>
+  <text x="72" y="174" fill="#6e7681" font-size="10.5" font-family="monospace">可调：/proc/sys/*、/etc/sysctl.conf、kmod-* 包</text>
+  <text x="930" y="156" text-anchor="end" fill="#6e7681" font-size="10" font-family="monospace">升内核=重刷固件</text>
+
+  <!-- L2 文件系统 -->
+  <rect x="50" y="202" width="900" height="70" rx="8" fill="#161b22" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="72" y="226" fill="#39c5cf" font-size="12.5" font-weight="700">L2 · 文件系统 / overlay</text>
+  <text x="72" y="246" fill="#9198a1" font-size="10.5" font-family="monospace">/rom (squashfs 只读) + /overlay/upper (f2fs 可写) → overlayfs 合成 /</text>
+  <text x="72" y="264" fill="#6e7681" font-size="10.5" font-family="monospace">/var → /tmp (内存) · /tmp 494MB tmpfs</text>
+  <text x="930" y="246" text-anchor="end" fill="#6e7681" font-size="10" font-family="monospace">7.2G 剩 6.6G</text>
+
+  <!-- L3 procd -->
+  <rect x="50" y="286" width="900" height="86" rx="8" fill="#1a2216" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="72" y="310" fill="#3fb950" font-size="12.5" font-weight="700">L3 · 服务管理 procd + init 脚本</text>
+  <text x="72" y="330" fill="#9198a1" font-size="10.5" font-family="monospace">/etc/init.d/*  (约 140 个)  →  /etc/rc.d/S##name 软链控制开机顺序</text>
+  <text x="72" y="348" fill="#6e7681" font-size="10.5" font-family="monospace">/sbin/procd (PID 1) · /sbin/ubusd (总线) · /sbin/rpcd (RPC 守护)</text>
+  <text x="72" y="366" fill="#6e7681" font-size="10.5" font-family="monospace">命令：service /etc/init.d/X {start|stop|restart|enable|disable}</text>
+  <text x="930" y="330" text-anchor="end" fill="#6e7681" font-size="10" font-family="monospace">最常动的一层</text>
+
+  <!-- L4 配置 -->
+  <rect x="50" y="386" width="900" height="86" rx="8" fill="#1a2a3a" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="72" y="410" fill="#ffa657" font-size="12.5" font-weight="700">L4 · 配置层 UCI（Unified Configuration Interface）</text>
+  <text x="72" y="430" fill="#9198a1" font-size="10.5" font-family="monospace">/etc/config/*  约 80 个配置文件  →  uci get/set/commit/show</text>
+  <text x="72" y="448" fill="#6e7681" font-size="10.5" font-family="monospace">network · wireless · dhcp · firewall · system · luci · openclash · adguardhome …</text>
+  <text x="72" y="466" fill="#6e7681" font-size="10.5" font-family="monospace">改完要 uci commit + 重载对应服务，否则配置在盘上但没生效</text>
+  <text x="930" y="430" text-anchor="end" fill="#6e7681" font-size="10" font-family="monospace">所有玩法的核心</text>
+
+  <!-- L5 前端 -->
+  <rect x="50" y="486" width="900" height="100" rx="8" fill="#2a1a3a" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="72" y="510" fill="#bc8cff" font-size="12.5" font-weight="700">L5 · 表现层（三套并存的 Web 前端）</text>
+
+  <rect x="72" y="522" width="270" height="50" rx="5" fill="#0d1117" stroke="#bc8cff"/>
+  <text x="207" y="542" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="600">GL 后台 (gl-ui)</text>
+  <text x="207" y="560" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">nginx:80/443 → /rpc</text>
+
+  <rect x="360" y="522" width="270" height="50" rx="5" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="495" y="542" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">LuCI (argon 主题)</text>
+  <text x="495" y="560" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">uhttpd:8080/8443 → ubus</text>
+
+  <rect x="648" y="522" width="280" height="50" rx="5" fill="#0d1117" stroke="#3fb950"/>
+  <text x="788" y="542" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">iStore 应用商店</text>
+  <text x="788" y="560" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">/cgi-bin/luci/admin/istore</text>
+
+  <text x="500" y="600" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">三者读写同一批 /etc/config/* ，但 UI 与 API 完全独立 —— 这是最容易互相覆盖的地方</text>
+
+  <!-- 侧栏：数据面 -->
+  <rect x="50" y="620" width="900" height="56" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="72" y="644" fill="#d29922" font-size="12" font-weight="700">横向贯穿 · 数据面（不经过上面任何一层）</text>
+  <text x="72" y="664" fill="#9198a1" font-size="10.5" font-family="monospace">网卡 → mtkhnat 硬件加速 → 出口。telnet/Web 全部不参与，所以 UI 卡不影响上网</text>
+
+  <!-- 左侧层号 -->
+  <g font-family="monospace" font-size="11" fill="#6e7681">
+    <text x="30" y="74" text-anchor="middle">L0</text>
+    <text x="30" y="154" text-anchor="middle">L1</text>
+    <text x="30" y="240" text-anchor="middle">L2</text>
+    <text x="30" y="334" text-anchor="middle">L3</text>
+    <text x="30" y="434" text-anchor="middle">L4</text>
+    <text x="30" y="540" text-anchor="middle">L5</text>
+  </g>
+</svg>
+<figcaption>图 3 · 六层纵向模型 + 一条横向数据面。改任何东西前先确认"这事属于哪一层"</figcaption>
+</figure>
+
+<h3>3.1 各层"能改什么 / 改了怎么生效"</h3>
+<div class="tw"><table>
+<tr><th style="width:8%">层</th><th style="width:24%">改哪里</th><th style="width:30%">典型操作</th><th>怎么让它生效</th></tr>
+<tr><td><strong>L0</strong></td><td>u-boot-env、factory 校准</td><td>改 MAC、改启动参数</td><td><span class="tag t-warn">高危</span> 需要 <code>fw_setenv</code>，改错直接不进系统。factory 区改坏 = Wi-Fi 永久失校</td></tr>
+<tr><td><strong>L1</strong></td><td><code>/etc/sysctl.conf</code>、<code>/proc/sys/</code>、装 <code>kmod-*</code></td><td>开 conntrack 调优、开 BBR、加 tcp 拥塞控制</td><td><code>sysctl -p</code> 或写 <code>/etc/sysctl.d/</code> 后重启服务；模块用 <code>insmod</code>/<code>modprobe</code></td></tr>
+<tr><td><strong>L2</strong></td><td>文件本身（<code>/overlay/upper/</code> 下任意）</td><td>放脚本、放规则库、放二进制、挂 U 盘</td><td>直接生效（文件立即存在），但<strong>服务要不要重启取决于它是否已加载</strong></td></tr>
+<tr><td><strong>L3</strong></td><td><code>/etc/init.d/</code>、<code>/etc/rc.d/</code>、<code>/etc/rc.local</code></td><td>开机自启脚本、加自己的守护进程</td><td><code>/etc/init.d/X enable</code> 建软链；<code>rc.local</code> 只在开机最后执行一次</td></tr>
+<tr><td><strong>L4</strong></td><td><code>/etc/config/*</code></td><td>改网络/无线/防火墙/插件配置</td><td><code>uci commit X</code> + 相应服务 <code>reload</code>。<strong>GL 固件上 <code>commit</code> 常被 ACL 挡，要用 <code>uci apply</code> 或 SSH 里直接 commit</strong></td></tr>
+<tr><td><strong>L5</strong></td><td><code>/www/</code>、<code>/usr/lib/lua/luci/view/</code></td><td>换主题、改登录页、加自定义页面</td><td><strong>静态资源刷新即生效，不需要重启</strong>；Lua 模板改动要清 LuCI 缓存（<code>/tmp/luci-*</code>）</td></tr>
+</table></div>
+
+<div class="box warn">
+  <b>"配置写进去了" ≠ "生效了" —— 这台机器上这条教训尤其贵</b>
+  <p>GL 固件的 <code>uci apply</code> 只负责<strong>提交配置文件</strong>，<strong>不会</strong>重建防火墙、<strong>不会</strong>重挂 fstab、<strong>不会</strong>重启 repeater 服务。所以每一次改完，都要落到实测层验证：防火墙看 <code>iptables -t mangle -L</code> 的 pkts 是否在涨、挂载看 <code>/proc/mounts</code> 的 <code>rw</code> 标志、无线看 <code>iwinfo</code> 的 ssid 非空。</p>
+</div>
+
+<h3>3.2 UCI 是这台机器真正的"配置总线"</h3>
+
+<p><code>/etc/config/</code> 下有 <strong>80 个</strong>配置文件。它们全都是同一种语法（UCI 的 section/option 结构），所以<strong>一套 <code>uci</code> 命令可以操作全部配置</strong>——包括第三方插件（OpenClash、AdGuardHome）。这是你扩展玩法时最省力的入口。</p>
+
+<pre><code><span class="c"># 看有哪些配置</span>
+uci show | cut -d. -f1 | sort -u
+
+<span class="c"># 看某个配置的全部内容（结构化）</span>
+uci show openclash
+
+<span class="c"># 看某一段</span>
+uci show network.wan
+
+<span class="c"># 备份某一项（改前必做）</span>
+cp /etc/config/firewall /etc/config/firewall.bak-$(date +%Y%m%d)
+
+<span class="c"># 改（注意：set 后必须 commit）</span>
+uci set network.wan.peerdns='0'
+uci commit network
+/etc/init.d/network reload
+
+<span class="c"># 查"改了但没提交"的东西 —— 排查"为什么没生效"第一步</span>
+uci changes</code></pre>
+
+<h4>本机实际存在的 UCI 配置文件全清单（按用途归类）</h4>
+<div class="tw"><table>
+<tr><th style="width:16%">类别</th><th>配置文件</th></tr>
+<tr><td>网络基础</td><td><code>network</code> <code>dhcp</code> <code>wireless</code> <code>firewall</code> <code>system</code> <code>fstab</code> <code>sqm</code> <code>qos</code> <code>eqos</code> <code>mtkhnat</code> <code>fullconenat</code> <code>sip_alg</code> <code>fastnet</code></td></tr>
+<tr><td>多 WAN / 路由</td><td><code>kmwan</code> <code>route_policy</code> <code>edgerouter</code> <code>floatip</code> <code>port_forward</code> <code>upnpd</code> <code>wan-access</code> <code>switch-button</code></td></tr>
+<tr><td>DNS</td><td><code>dhcp</code>(dnsmasq) <code>adguardhome</code> <code>gl-dns-v2</code> <code>dnscrypt-proxy</code>(/etc/dnscrypt-proxy2) <code>dnsproxy</code> <code>gl_dpi</code></td></tr>
+<tr><td>代理 / VPN</td><td><code>openclash</code> <code>wireguard</code> <code>wireguard_server</code> <code>openvpn</code> <code>ovpnclient</code> <code>ovpnserver</code> <code>tailscale</code> <code>zerotier</code> <code>tor</code> <code>mptun</code> <code>expressvpn</code> <code>TRL</code></td></tr>
+<tr><td>远程接入 / 服务</td><td><code>ttyd</code> <code>dropbear</code> <code>uhttpd</code> <code>rpcd</code> <code>rtty</code> <code>ddnsto</code> <code>gl_ddns</code> <code>gl-cloud</code> <code>gl-ngx</code>(nginx) <code>linkease_app_entry</code></td></tr>
+<tr><td>存储 / NAS</td><td><code>nas</code> <code>gl_nas</code> <code>mdadm</code> <code>samba4</code> <code>minidlna</code> <code>disk_manage</code>(init.d)</td></tr>
+<tr><td>无线扩展</td><td><code>repeater</code> <code>gl-mesh</code> <code>prplmesh</code> <code>gl-tertf</code>(流量整形)</td></tr>
+<tr><td>GL 私有</td><td><code>glconfig</code> <code>gl_category</code> <code>gl_led</code> <code>gl_timer</code> <code>gl_s2s</code> <code>gl_block</code> <code>gl-black_white_list</code> <code>gl_dpi*</code> <code>glmodem</code> <code>cellular</code> <code>glinjector</code> <code>istore</code> <code>plugins</code> <code>quickstart</code> <code>ucitrack</code> <code>ubootenv</code> <code>upgrade</code> <code>langs</code></td></tr>
+<tr><td>其他</td><td><code>chrony</code> <code>dropbear</code> <code>parental_control_v2</code> <code>parental_control_apps</code> <code>netifyd</code> <code>cake-autorate</code> <code>network-quality</code> <code>rpcd</code> <code>luci</code> <code>board_special</code></td></tr>
+</table></div>
+
+<h2 id="s4"><span class="num">04</span>启动流程：从加电到能上网</h2>
+
+<p>搞清楚启动顺序，才知道"我的脚本该放哪一层"、"为什么我的规则开机就没了"。</p>
+
+<figure>
+<svg viewBox="0 0 1000 660" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="fl" markerWidth="9" markerHeight="9" refX="4" refY="7" orient="auto">
+      <path d="M0,0 L4,8 L8,0 z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+
+  <!-- 竖线 -->
+  <line x1="150" y1="40" x2="150" y2="600" stroke="#30363d" stroke-width="2"/>
+
+  <!-- 步骤 -->
+  <g font-size="11.5">
+    <circle cx="150" cy="60" r="7" fill="#f85149"/>
+    <text x="176" y="56" fill="#f85149" font-weight="700">① BootROM</text>
+    <text x="176" y="74" fill="#6e7681" font-family="monospace" font-size="10">SoC 内部固化，不可改。从 eMMC 读 p3(fip)</text>
+
+    <circle cx="150" cy="110" r="7" fill="#f85149"/>
+    <text x="176" y="106" fill="#f85149" font-weight="700">② U-Boot</text>
+    <text x="176" y="124" fill="#6e7681" font-family="monospace" font-size="10">读 p1 u-boot-env 拿 bootcmd/MAC · 读 p6 kernel 到内存</text>
+
+    <circle cx="150" cy="160" r="7" fill="#58a6ff"/>
+    <text x="176" y="156" fill="#58a6ff" font-weight="700">③ 内核启动</text>
+    <text x="176" y="174" fill="#6e7681" font-family="monospace" font-size="10">cmdline: root=PARTLABEL=rootfs rootwait</text>
+    <text x="176" y="190" fill="#6e7681" font-family="monospace" font-size="10">挂载 p7 → squashfs 为 /rom，启动 loop0(f2fs) 为 /overlay</text>
+
+    <circle cx="150" cy="228" r="7" fill="#39c5cf"/>
+    <text x="176" y="224" fill="#39c5cf" font-weight="700">④ overlayfs 合成 /</text>
+    <text x="176" y="242" fill="#6e7681" font-family="monospace" font-size="10">lower=/rom upper=/overlay/upper → 得到可写的根</text>
+
+    <circle cx="150" cy="278" r="7" fill="#3fb950"/>
+    <text x="176" y="274" fill="#3fb950" font-weight="700">⑤ /sbin/preinit → /sbin/init (/etc/preinit)</text>
+    <text x="176" y="292" fill="#6e7681" font-family="monospace" font-size="10">挂 /proc /sys /tmp /dev，初始化 /etc/rc.d 前的准备</text>
+
+    <circle cx="150" cy="328" r="7" fill="#3fb950"/>
+    <text x="176" y="324" fill="#3fb950" font-weight="700">⑥ procd 成为 PID 1</text>
+    <text x="176" y="342" fill="#6e7681" font-family="monospace" font-size="10">拉起 ubusd（总线）、rpcd（RPC）；按 /etc/rc.d 顺序跑</text>
+
+    <circle cx="150" cy="378" r="7" fill="#d29922"/>
+    <text x="176" y="374" fill="#d29922" font-weight="700">⑦ 关键 S 服务（按编号）</text>
+    <text x="176" y="392" fill="#6e7681" font-family="monospace" font-size="10">S10boot → S10system → S19firewall → S20network → S19dnsmasq</text>
+    <text x="176" y="408" fill="#6e7681" font-family="monospace" font-size="10">S19mtkhnat（硬件加速）→ S20mtk-hwnat-post → S21kmwan</text>
+
+    <circle cx="150" cy="440" r="7" fill="#d29922"/>
+    <text x="176" y="436" fill="#d29922" font-weight="700">⑧ S4x～S9x 应用层</text>
+    <text x="176" y="454" fill="#6e7681" font-family="monospace" font-size="10">S40fstab(外接盘) → S45istore → S50uhttpd/cron/sqm</text>
+    <text x="176" y="470" fill="#6e7681" font-family="monospace" font-size="10">S80nginx → S81minidlna → S90openvpn → S99adguardhome</text>
+    <text x="176" y="486" fill="#3fb950" font-family="monospace" font-size="10">S99openclash ← 代理最后起</text>
+
+    <circle cx="150" cy="516" r="7" fill="#bc8cff"/>
+    <text x="176" y="512" fill="#bc8cff" font-weight="700">⑨ /etc/rc.local（最后）</text>
+    <text x="176" y="530" fill="#6e7681" font-family="monospace" font-size="10">开机脚本终点。<tspan fill="#d29922">你放的自定义命令在这跑</tspan></text>
+
+    <circle cx="150" cy="566" r="7" fill="#6e7681"/>
+    <text x="176" y="562" fill="#9198a1" font-weight="700">⑩ 就绪</text>
+    <text x="176" y="580" fill="#6e7681" font-family="monospace" font-size="10">实测本次开机到抓取时已运行 2h13m</text>
+  </g>
+</svg>
+<figcaption>图 4 · 启动时序（依据：/etc/rc.d 实际 S 编号软链顺序，非推测）</figcaption>
+</figure>
+
+<h3>4.1 实测的 rc.d 顺序要点</h3>
+
+<p><code>/etc/rc.d/</code> 里 <strong>S##</strong> = 启动（start），<strong>K##</strong> = 关闭（kill）。数字越小越早。</p>
+
+<div class="tw"><table>
+<tr><th style="width:14%">编号</th><th style="width:32%">脚本</th><th>为什么这个顺序重要</th></tr>
+<tr><td>S10boot</td><td>boot</td><td>生成 <code>/var/run</code>、加载必需的模块</td></tr>
+<tr><td>S10system</td><td>system</td><td>设置主机名、时区、LED 初始态</td></tr>
+<tr><td>S13gl_ipv6 / S13mdadm</td><td>gl_ipv6, mdadm</td><td>IPv6 策略（本机全关）、软 RAID 组装</td></tr>
+<tr><td>S17fix-qsdk-eth</td><td>fix-qsdk-eth</td><td><strong>MTK 专有</strong>：修正 DSA 端口的 phy 能力/链路参数</td></tr>
+<tr><td>S19firewall</td><td>firewall</td><td>建 iptables 表。⚠️ <strong>比 network 早</strong>，所以防火墙规则里的接口名能提前解析</td></tr>
+<tr><td>S19dnsmasq</td><td>dnsmasq</td><td>DNS/DHCP 服务起来</td></tr>
+<tr><td>S19mtkhnat</td><td>mtkhnat</td><td><strong>硬件 NAT 加速装载</strong>——这是本机转发性能的来源</td></tr>
+<tr><td>S20network</td><td>network</td><td>netifd 建 br-lan、起 WAN DHCP</td></tr>
+<tr><td>S20mtk-hwnat-post</td><td>mtk-hwnat-post</td><td>HNAT 后置绑定，必须在 network 之后</td></tr>
+<tr><td>S21kmwan</td><td>kmwan</td><td>多 WAN 故障切换守护</td></tr>
+<tr><td>S40fstab</td><td>fstab</td><td><strong>U 盘/移动硬盘在这挂载</strong>——所以要放在 network 之后（网络盘）</td></tr>
+<tr><td>S50uhttpd</td><td>uhttpd</td><td>LuCI 的 Web 服务</td></tr>
+<tr><td>S80nginx</td><td>nginx</td><td>GL 后台的 Web 服务（<strong>比 uhttpd 晚</strong>）</td></tr>
+<tr><td>S99adguardhome</td><td>adguardhome</td><td>AGH 启动</td></tr>
+<tr><td>S99openclash</td><td>openclash</td><td><strong>代理最后启动</strong>——因为要等网络通才能拉订阅/更新规则</td></tr>
+<tr><td>S99ttyd / S99sudo / S99urandom_seed</td><td>杂项</td><td>网页终端、sudo、随机种子</td></tr>
+</table></div>
+
+<div class="box info">
+  <b>实用推论：你的自定义开机脚本该放哪？</b>
+  <ul style="margin-top:6px">
+    <li><strong>改 iptables / nftables 规则</strong> → 放 <code>/etc/firewall.user</code>（每次防火墙重建都执行，<strong>不只在开机时</strong>）。放 rc.local 只在开机跑一次，防火墙 reload 后规则就没了。</li>
+    <li><strong>起一个自己的后台程序</strong> → 写 <code>/etc/init.d/mysvc</code> + <code>enable</code>，或放 <code>/etc/rc.local</code>（简单但只在开机跑一次）。</li>
+    <li><strong>定时任务</strong> → <code>/etc/crontabs/root</code>（系统 cron）或 GL 的 <code>/etc/gl_crontabs/</code>（两套 crond 都在跑，见第 8 章）。</li>
+  </ul>
+</div>
+
+<h2 id="s5"><span class="num">05</span>根目录逐项说明</h2>
+
+<p>根目录是 <code>/rom</code> 与 <code>/overlay/upper</code> 合并后的视图。下面是<strong>实测的完整根目录</strong>，加上每一项到底是干什么的、以及"想玩什么该不该动它"。</p>
+
+<pre><code>drwxr-xr-x  .cache      <span class="c">← opkg/ruby 等的缓存目录（可清）</span>
+drwxr-xr-x  bin         <span class="c">← /bin → busybox 单二进制 + 少量独立程序</span>
+drwxr-xr-x  dev         <span class="c">← 设备节点（tmpfs, 512K）</span>
+drwxr-xr-x  etc         <span class="c">← ★ 所有配置的家</span>
+-rwxrwxr-x  init        <span class="c">← 276 字节，指向 /sbin/init → /etc/preinit</span>
+drwxr-xr-x  lib         <span class="c">← 内核模块 + 基础库 + /lib/functions 脚本库</span>
+lrwxrwxrwx  lib64 -> lib
+drwxr-xr-x  mnt         <span class="c">← 空。外接盘挂载点（默认没东西）</span>
+drwxr-xr-x  opt         <span class="c">← 第三方程序（当前只有 prplmesh 25K）</span>
+drwxr-xr-x  overlay     <span class="c">← ★ 可写层实体：upper/ 与 work/</span>
+dr-xr-xr-x  proc        <span class="c">← 内核/进程信息</span>
+drwxrwxr-x  rom         <span class="c">← ★ squashfs 原始固件（看"原版"就在这）</span>
+drwxr-xr-x  root        <span class="c">← root 家目录（SSH 登录后在这）</span>
+drwxr-xr-x  sbin        <span class="c">← 系统管理命令（procd、ubusd、init、fw3…）</span>
+dr-xr-xr-x  sys         <span class="c">← 设备树/驱动/GPIO/LED</span>
+drwxrwxrwt  tmp         <span class="c">← ★ 494MB 内存盘，重启清空</span>
+drwxr-xr-x  usr         <span class="c">← 用户态程序、库、共享数据（最大的目录）</span>
+lrwxrwxrwx  var -> tmp <span class="c">← ★ 注意这个软链！所有 /var 都在内存里</span>
+drwxr-xr-x  www         <span class="c">← ★ Web 根目录（三套前端的静态资源）</span></code></pre>
+
+<h3>5.1 各目录的玩法与禁区</h3>
+<div class="tw"><table>
+<tr><th style="width:10%">目录</th><th style="width:30%">里面有什么（实测）</th><th style="width:26%">能玩什么</th><th>禁区</th></tr>
+<tr><td><code>/bin</code></td><td>busybox 及其 applet 软链 + 少量独立二进制</td><td>换 busybox 版本、加 applet</td><td>换错 busybox = 系统全废（所有基础命令都是它）</td></tr>
+<tr><td><code>/etc</code></td><td><strong>40 个条目</strong>，见第 6 章</td><td>几乎所有配置改动</td><td><code>passwd</code>/<code>shadow</code> 改错 = 锁死 SSH；<code>shadow</code> 权限必须 600</td></tr>
+<tr><td><code>/lib</code></td><td><code>/lib/modules/5.4.238/</code> 内核模块、<code>/lib/functions/</code> 与 <code>/lib/upgrade/</code> 脚本库、基础 .so</td><td>加内核模块（<code>insmod</code>）；读 <code>/lib/functions/gl_util.sh</code> 看 GL 内部实现</td><td>删 <code>/lib/functions</code> 里脚本 → init 脚本全挂</td></tr>
+<tr><td><code>/mnt</code></td><td>空</td><td>外接盘挂载点（<code>/mnt/sda1</code> 之类）</td><td>—</td></tr>
+<tr><td><code>/opt</code></td><td><code>/opt/prplmesh</code> 25KB（Wi-Fi EasyMesh）</td><td>放便携程序、Python/Go 二进制</td><td>—</td></tr>
+<tr><td><code>/rom</code></td><td>固件原始文件的完整镜像</td><td><strong>对比"我改了啥"</strong>：<code>diff /rom/etc/config/firewall /etc/config/firewall</code></td><td>只读，动不了（好事）</td></tr>
+<tr><td><code>/root</code></td><td>root 家目录（仅 9KB）</td><td>放脚本、SSH key、备份</td><td>—</td></tr>
+<tr><td><code>/sbin</code></td><td>procd、ubusd、init、<code>fw3</code>/<code>nft</code>、<code>reboot</code> 等</td><td>—</td><td>这是系统命脉，别手动改</td></tr>
+<tr><td><code>/tmp</code></td><td>494MB tmpfs；<code>/tmp/openclash.log</code>、<code>/tmp/dhcp.leases</code>、<code>/tmp/luci-*</code></td><td>临时文件、大文件解压中转（内存够的话）</td><td><strong>重启全丢</strong>；别在这放大文件（吃内存）</td></tr>
+<tr><td><code>/usr</code></td><td><code>bin</code> <code>sbin</code> <code>lib</code> <code>share</code> <code>libexec</code>：GL 的 FastNet/quickstart/ddnstod/linkease、Lua 库、opkg 数据库</td><td>装包、看 GL 实现（<code>/usr/share/gl-ngx/*.lua</code>、<code>/usr/lib/lua/luci/</code>）</td><td><code>/usr/lib/opkg/</code> 是包数据库，手改会破坏包管理</td></tr>
+<tr><td><code>/www</code></td><td><code>cgi-bin/</code> <code>luci-static/</code> <code>js/</code> <code>views/</code> <code>i18n/</code>、GL 的 <code>gl_home.html</code></td><td><strong>换主题、改登录页、加自定义页面</strong></td><td>改 <code>/www/js/app.*.js</code>（GL 后台主程序，压缩过）会让 GL 后台白屏</td></tr>
+</table></div>
+
+<h3>5.2 <code>/rom</code> 这个目录别忘了 —— 它是最好的"后悔药"</h3>
+
+<p>因为 overlayfs 的 lowerdir 就是 <code>/rom</code>，所以<strong>每一个被你改过的文件，原始版本都还在 <code>/rom</code> 里</strong>。这比任何备份都可靠：</p>
+
+<pre><code><span class="c"># 看当前 firewall 配置跟出厂比改了啥</span>
+diff /rom/etc/config/firewall /etc/config/firewall
+
+<span class="c"># 一键还原某配置到出厂状态</span>
+cp /rom/etc/config/firewall /etc/config/firewall
+
+<span class="c"># 找出所有被改过/新增的文件（relative 对比）</span>
+<span class="c"># 注意：这条输出会很长，建议加 grep 缩小</span>
+for f in $(find /rom/etc -type f 2>/dev/null); do
+  rel=${f#/rom}
+  [ -f "$rel" ] && ! cmp -s "$rel" "$f" && echo "改动: $rel"
+done
+
+<span class="c"># 看某目录在 overlay 里新增了哪些文件</span>
+ls /overlay/upper/etc/</code></pre>
+
+<h2 id="s6"><span class="num">06</span>/etc 深入：配置的实际落点</h2>
+
+<p><code>/etc</code> 是 <strong>40 个条目</strong>，几乎每个都对应一类玩法。下面按"你会不会用到"排序。</p>
+
+<h3>6.1 必知的核心文件</h3>
+<div class="tw"><table>
+<tr><th style="width:24%">路径</th><th style="width:14%">性质</th><th>作用与玩法</th></tr>
+<tr><td><code>/etc/config/</code></td><td>目录 · 80 文件</td><td><strong>UCI 配置总库</strong>。所有持久化配置都在这。备份它 = 备份整个路由器的设置</td></tr>
+<tr><td><code>/etc/rc.local</code></td><td>脚本</td><td><strong>开机最后执行的脚本</strong>。写自定义启动命令最方便的地方。<span class="tag t-warn">本机当前有残留</span> 见 6.4</td></tr>
+<tr><td><code>/etc/firewall.user</code></td><td>脚本</td><td><strong>自定义防火墙规则的官方位置</strong>。每次防火墙重建都会执行（比 rc.local 可靠）。本机当前<strong>只有注释、无规则</strong></td></tr>
+<tr><td><code>/etc/crontabs/root</code></td><td>crontab</td><td>系统 cron 任务。<code>crond -c /etc/crontabs</code> 在跑</td></tr>
+<tr><td><code>/etc/passwd</code> <code>/etc/shadow</code></td><td>账户</td><td>root 密码哈希。⚠️ <code>shadow</code> 权限必须 <code>600</code></td></tr>
+<tr><td><code>/etc/dropbear/</code></td><td>目录</td><td>SSH 主机密钥（<code>authorized_keys</code> 也在这，可放公钥免密登录）</td></tr>
+<tr><td><code>/etc/uhttpd.crt</code> <code>/etc/uhttpd.key</code></td><td>证书</td><td><strong>LuCI(8443) 的自签证书</strong>。想换掉"不安全"提示就换这对</td></tr>
+<tr><td><code>/etc/nginx/nginx.cer</code> <code>nginx.key</code></td><td>证书</td><td><strong>GL 后台(443) 的自签证书</strong>。跟上面是两套</td></tr>
+<tr><td><code>/etc/opkg/distfeeds.conf</code></td><td>包源</td><td>3 个 GL 官方源。<strong>装包失败的第一个检查点</strong></td></tr>
+<tr><td><code>/etc/hosts</code></td><td>静态解析</td><td>本机域名映射。可做内网 DNS 劫持</td></tr>
+<tr><td><code>/etc/sysctl.conf</code></td><td>内核参数</td><td>当前<strong>只有一行注释</strong>，等于全用默认。可在这调 conntrack 表大小</td></tr>
+</table></div>
+
+<h3>6.2 GL 专有的脚本/目录（原版 OpenWrt 没有）</h3>
+<div class="tw"><table>
+<tr><th style="width:26%">路径</th><th>作用</th></tr>
+<tr><td><code>/etc/gl_crontabs/</code></td><td>GL 自己的 crontab 目录（有 <code>crontabs.d/</code>）。<strong>与 <code>/etc/crontabs/</code> 是两套，两个 crond 进程各读一个</strong></td></tr>
+<tr><td><code>/etc/gl-switch.d/</code> <code>/etc/gl-switch.btn</code></td><td>物理开关/按键触发的脚本。想给"拨动开关"绑定自定义动作就在这</td></tr>
+<tr><td><code>/etc/gl-reset-network.d/</code></td><td>重置网络时执行的钩子</td></tr>
+<tr><td><code>/etc/firewall.ethernet_ttl</code><br><code>/etc/firewall.tethering_ttl</code></td><td>GL 内置的 <strong>TTL 统一脚本</strong>（防共享检测用）。⚠️ <strong>当前没有被任何 uci firewall 规则引用，所以不生效</strong></td></tr>
+<tr><td><code>/etc/firewall.tailscale.sh</code> <code>/etc/firewall.tor.fw3</code> <code>/etc/firewall.nat6</code> <code>/etc/firewall.pf</code> <code>/etc/firewall.security</code></td><td>GL 各子系统的防火墙片段，由对应服务在启动时 include</td></tr>
+<tr><td><code>/etc/gl-model-names.json</code></td><td>型号 → 市场名映射（<code>mt6000 → "Flint 2"</code>）。改它能让后台显示别的型号</td></tr>
+<tr><td><code>/etc/app-metadata.json</code> <code>/etc/categories.json</code> <code>/etc/apps.conf</code></td><td><strong>GL 应用商店的元数据</strong>。想给插件分类/加图标就改这</td></tr>
+<tr><td><code>/etc/glinjector</code> <code>/etc/glinjector/</code></td><td>GL 的"注入器"——往 LuCI 注入 GL 的菜单项与样式。<strong>两套前端能共存就是靠它</strong></td></tr>
+<tr><td><code>/etc/parental_control_v2/</code></td><td>家长控制数据（时间表、规则）</td></tr>
+<tr><td><code>/etc/device_info</code> <code>/etc/glversion</code> <code>/etc/version.build</code></td><td>设备信息：build 1147 / 2026-09-24 / release3</td></tr>
+<tr><td><code>/etc/oui</code> <code>/etc/oui-httpd</code> <code>/etc/oui-tertf</code></td><td>GL OUI 框架（GL 后台的后端组件）</td></tr>
+<tr><td><code>/etc/netifyd.conf</code> <code>/etc/netifyd/</code></td><td>DPI 引擎配置与协议特征库（3.2MB）</td></tr>
+<tr><td><code>/etc/edgerouter.fw</code></td><td>边路由（策略路由）的防火墙脚本</td></tr>
+<tr><td><code>/etc/istore/uci-defaults_bak/</code></td><td>iStore 装包时的 uci-defaults 备份。<strong>卸载插件后这里会留残留</strong></td></tr>
+</table></div>
+
+<h3>6.3 当前实际在跑的两套 cron</h3>
+<pre><code><span class="c"># /etc/crontabs/root —— 系统 cron（crond -c /etc/crontabs）</span>
+*/30 * * * * /usr/sbin/gl-update-cable-mac.sh time   <span class="c">← GL 每 30 分钟校时有线口 MAC</span>
+0 7 * * * /usr/share/openclash/openclash.sh #openclash-cron-task
+0 7 * * * /usr/share/openclash/openclash_chnroute.sh #openclash-cron-task
+
+<span class="c"># 进程里能看到两个 crond：</span>
+7105 root  /usr/sbin/crond -f -c /tmp/gl_crontabs -l 5    <span class="c">← GL 的那套</span>
+5671 root  /usr/sbin/crond -f -c /etc/crontabs  -l 5      <span class="c">← 系统的这套</span></code></pre>
+
+<div class="box info">
+  <b>玩法：想加定时任务，加在哪？</b>
+  <p>加到 <code>/etc/crontabs/root</code> 然后 <code>/etc/init.d/cron restart</code> 即可。<strong>不要</strong>用 GL 的"定时任务"界面（它写 <code>gl_timer</code> UCI，是另一套机制），两套混用会导致同一个任务跑两遍或者互相覆盖。</p>
+</div>
+
+<h3>6.4 ⚠️ 发现一处历史残留：<code>/etc/rc.local</code></h3>
+
+<div class="box warn">
+  <b>如实报告：这个文件里有之前（我）留下的痕迹，需要你知情</b>
+  <p>当前内容是：</p>
+</div>
+
+<pre><code>#!/bin/sh
+. /lib/functions/gl_util.sh
+remount_ubifs                                  <span class="c">← 本机没有 ubifs，这句在这里是空操作</span>
+rm -f /www/hermes_deploy.log                   <span class="c">← 部署日志清理</span>
+sync
+cat > /etc/rc.local &lt;&lt;'RCEOF'                  <span class="c">← 自还原逻辑</span>
+. /lib/functions/gl_util.sh
+remount_ubifs
+
+echo 3 &gt; /proc/sys/vm/drop_caches              <span class="c">← 开机清一次页缓存</span>
+exit 0
+RCEOF
+exit 0</code></pre>
+
+<p><strong>它的实际效果</strong>：每次开机跑一遍，执行 <code>drop_caches</code> 清空页缓存，然后把 <code>rc.local</code> 改写成下面那段（去掉 <code>rm -f</code> 那句）。所以现在是"自还原到干净态"的状态，<strong>不影响功能，也不是故障</strong>。</p>
+
+<p><strong>要不要清</strong>：这个文件本质上是"开机清一次缓存"，无害但也无用（<code>drop_caches</code> 反而会让开机后第一次访问变慢）。如果你想恢复成出厂那三行，我可以给你确切的命令，但我<strong>没有动它</strong>——按你的要求全程只读。</p>
+
+<pre><code><span class="c"># 出厂原版（在 /rom 里可以对照）</span>
+cat /rom/etc/rc.local
+<span class="c"># 想恢复就执行（需要你确认后再做）：</span>
+cp /rom/etc/rc.local /etc/rc.local</code></pre>
+<h2 id="s7"><span class="num">07</span>网络数据面：包是怎么出去的</h2>
+
+<p>这是整台机器<strong>性能最关键</strong>的一层，也是最容易被"改规则改坏"的一层。理解它你才知道为什么这台机器 CPU 长期 0%、为什么装某些插件会让网速腰斩。</p>
+
+<figure>
+<svg viewBox="0 0 1000 720" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="p1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#3fb950"/>
+    </marker>
+    <marker id="p2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#d29922"/>
+    </marker>
+  </defs>
+
+  <text x="500" y="26" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="700">一个包从 LAN 客户端到互联网的完整旅程</text>
+
+  <!-- 客户端 -->
+  <rect x="30" y="60" width="120" height="52" rx="7" fill="#161b22" stroke="#58a6ff"/>
+  <text x="90" y="82" text-anchor="middle" fill="#58a6ff" font-size="11.5" font-weight="600">LAN 客户端</text>
+  <text x="90" y="99" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">192.168.8.x</text>
+
+  <!-- 第一步 -->
+  <rect x="30" y="130" width="440" height="290" rx="10" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+  <text x="250" y="154" text-anchor="middle" fill="#d29922" font-size="12" font-weight="700">慢路径 · 走 Linux 协议栈（每个连接的第一批包）</text>
+
+  <rect x="50" y="170" width="185" height="46" rx="5" fill="#0d1117" stroke="#30363d"/>
+  <text x="142" y="190" text-anchor="middle" fill="#e6edf3" font-size="10.5">① DSA 端口 lan3</text>
+  <text x="142" y="206" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">eth0 的从属口</text>
+
+  <rect x="250" y="170" width="200" height="46" rx="5" fill="#0d1117" stroke="#30363d"/>
+  <text x="350" y="190" text-anchor="middle" fill="#e6edf3" font-size="10.5">② br-lan 桥接</text>
+  <text x="350" y="206" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">L2 转发决策</text>
+
+  <rect x="50" y="226" width="400" height="42" rx="5" fill="#0d1117" stroke="#f85149"/>
+  <text x="250" y="245" text-anchor="middle" fill="#f85149" font-size="10.5" font-weight="600">③ iptables mangle FORWARD</text>
+  <text x="250" y="261" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">实测：TCPMSS clamp + NFQUEUE(connbytes 0:32) + OpenClash 链</text>
+
+  <rect x="50" y="278" width="400" height="42" rx="5" fill="#0d1117" stroke="#bc8cff"/>
+  <text x="250" y="297" text-anchor="middle" fill="#bc8cff" font-size="10.5" font-weight="600">④ nat PREROUTING → openclash 链</text>
+  <text x="250" y="313" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">fake-ip 模式下匹配规则 → 需要代理的转到 7892/7893</text>
+
+  <rect x="50" y="330" width="400" height="42" rx="5" fill="#0d1117" stroke="#3fb950"/>
+  <text x="250" y="349" text-anchor="middle" fill="#3fb950" font-size="10.5" font-weight="600">⑤ nat POSTROUTING → FULLCONENAT</text>
+  <text x="250" y="365" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">实测 52558 包/3885KB 走这条 → eth1 出</text>
+
+  <text x="250" y="398" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">CPU 参与每一个包，所以慢 —— 但只处理"前几个包"</text>
+
+  <!-- 第二步 HNAT -->
+  <rect x="500" y="130" width="470" height="290" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+  <text x="735" y="154" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">快路径 · mtkhnat 硬件加速（连接建立后的所有包）</text>
+
+  <rect x="520" y="170" width="430" height="50" rx="5" fill="#1a3325" stroke="#3fb950"/>
+  <text x="735" y="190" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">⑥ 连接被"卸载"到 HNAT 硬件表</text>
+  <text x="735" y="208" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">debugfs: /sys/kernel/debug/hnat/all_entry · hnat_entry · hnat_setting</text>
+
+  <rect x="520" y="232" width="430" height="50" rx="5" fill="#1a3325" stroke="#3fb950"/>
+  <text x="735" y="252" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">⑦ 后续包直接由硬件转发</text>
+  <text x="735" y="270" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">NAT / 路由 / 改写 全部在 ASIC 里完成，不经过 CPU</text>
+
+  <rect x="520" y="294" width="430" height="50" rx="5" fill="#1a3325" stroke="#3fb950"/>
+  <text x="735" y="314" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">⑧ 直接出 eth1 → 上级网关</text>
+  <text x="735" y="332" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">这是 CPU load 长期 0.11 的真正原因</text>
+
+  <text x="735" y="398" text-anchor="middle" fill="#d29922" font-size="9.5" font-family="monospace">⚠️ 一开 iptables 的复杂匹配/NAT 改写/HNAT 就会 fallback 到慢路径</text>
+
+  <!-- 中间箭头 -->
+  <path d="M470 275 L498 275" stroke="#3fb950" stroke-width="2" marker-end="url(#p1)"/>
+
+  <!-- 下面是 OpenClash 分叉 -->
+  <rect x="30" y="440" width="940" height="120" rx="10" fill="#2a1a3a" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="500" y="464" text-anchor="middle" fill="#bc8cff" font-size="12" font-weight="700">OpenClash 分流（当前 operation_mode=fake-ip / proxy_mode=rule）</text>
+
+  <rect x="52" y="478" width="270" height="64" rx="5" fill="#0d1117" stroke="#3fb950"/>
+  <text x="187" y="498" text-anchor="middle" fill="#3fb950" font-size="10.5" font-weight="600">命中直连规则</text>
+  <text x="187" y="516" text-anchor="middle" fill="#9198a1" font-size="9.5">不劫持，直接 FULLCONENAT 出去</text>
+  <text x="187" y="532" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">走 eth1 原生出口</text>
+
+  <rect x="340" y="478" width="270" height="64" rx="5" fill="#0d1117" stroke="#bc8cff"/>
+  <text x="475" y="498" text-anchor="middle" fill="#bc8cff" font-size="10.5" font-weight="600">命中代理规则</text>
+  <text x="475" y="516" text-anchor="middle" fill="#9198a1" font-size="9.5">重定向到 clash 的 7892(redir)/7893(mixed)</text>
+  <text x="475" y="532" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">进程 24909 处理 → 走机场</text>
+
+  <rect x="628" y="478" width="320" height="64" rx="5" fill="#0d1117" stroke="#d29922"/>
+  <text x="788" y="498" text-anchor="middle" fill="#d29922" font-size="10.5" font-weight="600">fake-ip 的副作用</text>
+  <text x="788" y="516" text-anchor="middle" fill="#9198a1" font-size="9.5">DNS 返回 198.18.x.x 假地址</text>
+  <text x="788" y="532" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">→ clash 按目的 IP 反查真实域名</text>
+
+  <!-- 出口 -->
+  <rect x="330" y="586" width="340" height="52" rx="7" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="500" y="607" text-anchor="middle" fill="#3fb950" font-size="11.5" font-weight="600">eth1 (WAN, 10.177.5.248/16)</text>
+  <text x="500" y="624" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">→ 10.177.255.254 → 移动 CGNAT → 互联网</text>
+
+  <line x1="187" y1="560" x2="400" y2="584" stroke="#3fb950" stroke-width="1.5" marker-end="url(#p1)"/>
+  <line x1="475" y1="560" x2="480" y2="584" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#p1)"/>
+  <line x1="788" y1="560" x2="600" y2="584" stroke="#d29922" stroke-width="1.5" marker-end="url(#p2)"/>
+
+  <text x="500" y="670" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">实测：mangle FORWARD 26626 包 / 24MB · nat POSTROUTING FULLCONENAT 52558 包 / 3.88MB</text>
+  <text x="500" y="690" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">conntrack 当前 500 条 / buckets 8192 · Forward policy ACCEPT</text>
+</svg>
+<figcaption>图 5 · 数据面三路径：慢路径（CPU + iptables）→ 快路径（HNAT 硬件）→ OpenClash 分流</figcaption>
+</figure>
+
+<h3>7.1 实测的 iptables 规则链（只读抓取）</h3>
+
+<pre><code><span class="c"># nat POSTROUTING —— 出 WAN 的关键跳</span>
+Chain POSTROUTING (policy ACCEPT 1774 packets, 176K)
+  232   56488 RETURN       all  --  *      utun    <span class="c">/* OpenClash TUN Postrouting */</span>
+52558 3885K  FULLCONENAT  all  --  *      eth1    <span class="c">← 主出口，全锥形 NAT</span>
+ 1556   121K postrouting_rule all -- *    *
+   20  1604 zone_lan_postrouting  all -- *  br-lan
+    0     0 zone_wan_postrouting  all -- *  eth1
+
+<span class="c"># nat PREROUTING —— OpenClash 的 DNS 劫持在这</span>
+    0     0 REDIRECT  tcp -- * *  tcp dpt:53  /* OpenClash DNS Hijack */  to:53
+ 1536   106K REDIRECT  udp -- * *  udp dpt:53  /* OpenClash DNS Hijack */  to:53
+  488  61614 FULLCONENAT all -- eth1 *
+ 2808   156K <tspan fill="#bc8cff">openclash</tspan>  tcp -- * *
+
+<span class="c"># mangle FORWARD —— 只有三条，很干净</span>
+    8    512 TCPMSS  tcp -- *  eth1   /* Zone wan MTU fixing */ clamp to PMTU
+    0      0 TCPMSS  tcp -- eth1 *     /* Zone wan MTU fixing */ clamp to PMTU
+ 1166  893K NFQUEUE  all -- *  *      connbytes 0:32 direction both NFQUEUE num 0 bypass</code></pre>
+
+<div class="box info">
+  <b>三条规则各是什么，值得记住</b>
+  <ul style="margin-top:6px">
+    <li><strong>FULLCONENAT</strong>：全锥形 NAT（Full Cone）。这是<strong>游戏联机 / P2P / 某些语音通话</strong>能正常工作的关键。它替代了普通 MASQUERADE，对 NAT 类型要求严格的游戏是好事。</li>
+    <li><strong>TCPMSS clamp to PMTU</strong>：MTU 修正。因为 WAN 侧是 PPPoE/隧道时 MTU 小于 1500，不做这个很多网站会"能 ping 通但打不开"。<code>mtu_fix=1</code> 开着。</li>
+    <li><strong>NFQUEUE connbytes 0:32</strong>：把每个连接的<strong>前 32 个包</strong>送进用户态（给 DPI / OpenClash 判断），之后自动 bypass 走快路径。这就是"DPI 开着但不拖网速"的设计。</li>
+  </ul>
+</div>
+
+<h3>7.2 HNAT 硬件加速：可观测的入口</h3>
+
+<p><code>/sys/kernel/debug/hnat/</code> 是 MTK 暴露的 HNAT 状态目录，<strong>这是排查"为什么某类流量慢"的利器</strong>，原版 OpenWrt 没有这个。</p>
+
+<div class="tw"><table>
+<tr><th style="width:26%">文件</th><th>能看什么</th></tr>
+<tr><td><code>hnat_version</code></td><td>硬件加速模块版本</td></tr>
+<tr><td><code>hnat_setting</code></td><td><strong>当前加速开关、支持哪些协议</strong>（IPv4/IPv6/TCP/UDP/PPPoE…）</td></tr>
+<tr><td><code>all_entry</code> / <code>hnat_entry</code></td><td><strong>已卸载到硬件的连接表</strong> —— 能看到哪些流真正走了快路径</td></tr>
+<tr><td><code>cpu_reason</code></td><td><strong>包为什么没走硬件（被打回 CPU 的原因统计）</strong>——排查慢速最有用</td></tr>
+<tr><td><code>external_interface</code></td><td>哪些接口启用了外部加速</td></tr>
+<tr><td><code>hook_toggle</code> / <code>mape_toggle</code></td><td>挂钩点与 MAP-E 开关</td></tr>
+<tr><td><code>mcast_table</code></td><td>组播转发表（IPTV 多播相关）</td></tr>
+</table></div>
+
+<pre><code><span class="c"># 看当前 HNAT 是否开着、支持什么</span>
+cat /sys/kernel/debug/hnat/hnat_setting
+
+<span class="c"># 看有哪些连接被硬件加速了（数量多说明加速在工作）</span>
+cat /sys/kernel/debug/hnat/all_entry | head -20
+
+<span class="c"># ★ 排查"某个应用很慢"：看它为什么没被加速</span>
+cat /sys/kernel/debug/hnat/cpu_reason</code></pre>
+
+<div class="box warn">
+  <b>什么会让 HNAT 失效（网速掉一半以上）</b>
+  <ul style="margin-top:6px">
+    <li><strong>SQM / QoS / cake-autorate</strong>：整形必须逐包调度，必然绕过硬件加速。本机这些服务<strong>都没启用</strong>（<code>sqm</code>/<code>eqos</code>/<code>cake-autorate</code> 在 rc.d 有入口但配置未开），所以速度不受影响。开了就是"用带宽换低延迟"的取舍。</li>
+    <li><strong>复杂的 iptables 匹配</strong>（大量 <code>-m</code> 规则、连接标记、TPROXY 分流）。</li>
+    <li><strong>流量统计类工具</strong>（nlbwmon、vnstat）在极高流量下可能干扰。</li>
+    <li><strong>OpenClash 的 TUN 模式</strong>比 fake-ip 混合模式对加速更不友好。</li>
+  </ul>
+</div>
+
+<h2 id="s8"><span class="num">08</span>服务进程全景</h2>
+
+<p>实测 <strong>209 个线程 / 约 45 个用户态进程</strong>。下面按"你要不要管它"分类。</p>
+
+<h3>8.1 核心系统进程（别动）</h3>
+<div class="tw"><table>
+<tr><th style="width:10%">PID</th><th style="width:26%">进程</th><th>作用</th></tr>
+<tr><td>1</td><td><code>/sbin/procd</code></td><td><strong>进程 1</strong>，所有服务的父进程。管开机顺序、服务监控、崩溃重启</td></tr>
+<tr><td>1195</td><td><code>/sbin/ubusd</code></td><td>ubus 消息总线。LuCI / GL 后台 / 所有 RPC 都通过它</td></tr>
+<tr><td>2905</td><td><code>/sbin/rpcd</code></td><td>RPC 守护，把 ubus 暴露成 HTTP JSON-RPC（<code>/ubus</code> 端点）</td></tr>
+<tr><td>5262</td><td><code>/sbin/netifd</code></td><td>网络接口管理器 —— <strong>br-lan、WAN DHCP 都是它建的</strong></td></tr>
+<tr><td>2900/2915</td><td><code>dnsmasq</code> ×2</td><td>DNS + DHCP 服务器。两个实例：一个主、一个给 <code>gl_dpi</code> 用</td></tr>
+<tr><td>5671/7105</td><td><code>crond</code> ×2</td><td>两套定时任务（<code>/etc/crontabs</code> 与 <code>/tmp/gl_crontabs</code>）</td></tr>
+<tr><td>3395</td><td><code>chronyd</code></td><td>NTP 时间同步（配 GL 的快速校时）</td></tr>
+</table></div>
+
+<h3>8.2 Web 与管理服务（三套前端 + 远程接入）</h3>
+<div class="tw"><table>
+<tr><th style="width:10%">PID</th><th style="width:30%">进程</th><th style="width:12%">端口</th><th>说明</th></tr>
+<tr><td>10354</td><td><code>nginx master + 4 worker</code></td><td><strong>80 / 443</strong></td><td><strong>GL 后台（gl-ui）的服务器</strong>。用 Lua 处理 <code>/rpc</code>、<code>/ws</code>、<code>/upload</code>、<code>/download</code>。首页 <code>gl_home.html</code></td></tr>
+<tr><td>7284</td><td><code>uhttpd</code></td><td><strong>8080 / 8443</strong></td><td><strong>LuCI 的服务器</strong>。<code>/cgi-bin/luci</code> 走 Lua、<code>/ubus</code> 走 ubus、<code>/apps</code> 反代到 linkease</td></tr>
+<tr><td>4369</td><td><code>dropbear</code></td><td><strong>22</strong></td><td>SSH。参数 <code>-K 300 -T 3 -W 262144</code></td></tr>
+<tr><td>19596</td><td><code>ttyd</code></td><td><strong>7681</strong>（仅 br-lan）</td><td><strong>网页终端</strong>。GL 后台"终端"功能就是它。<code>-i br-lan /bin/login</code></td></tr>
+<tr><td>12936</td><td><code>quickstart</code></td><td>127.0.0.1:3038</td><td>首次配置向导的后端（unix socket 通信）</td></tr>
+<tr><td>15750</td><td><code>linkease-app-entry</code></td><td>127.0.0.1:19290</td><td>GL "应用中心"（linkease）。uhttpd 的 <code>/apps</code> 反代目标</td></tr>
+</table></div>
+
+<h3>8.3 网络功能服务</h3>
+<div class="tw"><table>
+<tr><th style="width:10%">PID</th><th style="width:34%">进程</th><th>作用 / 状态</th></tr>
+<tr><td>24909</td><td><code>/etc/openclash/clash -d /etc/openclash -f now-enhanced.yaml</code></td><td><span class="tag t-run">运行中</span> mihomo 内核。<strong>占虚存 1358MB</strong>。端口 7890/7891/7892/7893/7895/7874/9090</td></tr>
+<tr><td>24925</td><td><code>openclash_watchdog.sh</code></td><td>OpenClash 看门狗，内核挂了自动拉起</td></tr>
+<tr><td>598</td><td><code>AdGuardHome --glinet ...</code></td><td><span class="tag t-run">运行中</span> 端口 <strong>3000</strong>(面板) / <strong>3053</strong>(DNS)。<strong>虚存 1239MB</strong>，是本机内存第一大户。<em>但 <code>dns_enabled=0</code>，没接管系统 DNS</em></td></tr>
+<tr><td>14695</td><td><code>netifyd -R --thread-detection-cores=2</code></td><td><span class="tag t-run">运行中</span> DPI 深度包检测引擎（GL 的"应用识别"）。监听 127.0.0.1:1780</td></tr>
+<tr><td>15569</td><td><code>gl-dpi</code></td><td>GL DPI 主控（配合 netifyd）</td></tr>
+<tr><td>14939</td><td><code>FastNet web --addr 0.0.0.0:3200</code></td><td><span class="tag t-warn">注意</span> GL 的测速/网络检测 Web 服务，<strong>监听 0.0.0.0:3200</strong>，且防火墙 WAN 侧放行了 3200</td></tr>
+<tr><td>3692</td><td><code>gl-repeater</code></td><td>中继管理。<strong>当前中继未启用</strong>（<code>apclix0</code> NO-CARRIER）</td></tr>
+<tr><td>3561</td><td><code>mtk-wifi-configurator</code></td><td>MTK 无线参数配置器</td></tr>
+<tr><td>5172</td><td><code>carrier-monitor</code></td><td>WAN 运营商链路监测（配合 kmwan 故障切换）</td></tr>
+<tr><td>5408</td><td><code>cellular_manager</code></td><td>蜂窝模块管理（本机无模块，空转）</td></tr>
+<tr><td>3787</td><td><code>pcm-manager</code></td><td>GL 的 PCM（外接模块/蜂窝）管理</td></tr>
+</table></div>
+
+<h3>8.4 GL 私有后台服务</h3>
+<div class="tw"><table>
+<tr><th style="width:10%">PID</th><th style="width:34%">进程</th><th>作用</th></tr>
+<tr><td>14413</td><td><code>/usr/bin/gl_led</code></td><td>LED 灯效控制（<code>/etc/config/gl_led</code>）</td></tr>
+<tr><td>15095</td><td><code>alarm_event_report</code></td><td>告警上报（温度/离线/崩溃）</td></tr>
+<tr><td>15103</td><td><code>gl-cloud</code></td><td>GL 云服务连接（远程管理 <code>glddns</code>）</td></tr>
+<tr><td>15290</td><td><code>lua /usr/bin/gl_clients_update</code></td><td>在线客户端列表刷新</td></tr>
+<tr><td>15597</td><td><code>monitor_dpi_stats.lua</code></td><td>DPI 统计采样</td></tr>
+<tr><td>15611</td><td><code>monitor_traffic.lua</code></td><td>流量统计采样（GL 首页的实时速率图）</td></tr>
+<tr><td>12769</td><td><code>sms_manager</code></td><td>短信管理（无模块时空转）</td></tr>
+<tr><td>7368</td><td><code>dbus-daemon</code></td><td>D-Bus 系统总线（部分 GL 组件用）</td></tr>
+</table></div>
+
+<div class="box info">
+  <b>内存账：1GB 到底够不够</b>
+  <p><code>MemTotal 989MB</code>、<code>MemAvailable 489MB</code>（抓取时）。看起来宽裕，但注意 AdGuardHome 虚存 1239MB、clash 虚存 1358MB——<strong>虚存包含 mmap 的文件和预留地址空间，不等于实际占用</strong>。真正的判断依据只有 <code>MemAvailable</code>。如果你要再加常驻服务，先把它压到 300MB 以下再动手。</p>
+</div>
+
+<h2 id="s9"><span class="num">09</span>端口地图（实测 LISTEN 列表）</h2>
+
+<figure>
+<svg viewBox="0 0 1000 480" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <text x="500" y="26" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="700">端口 × 监听范围 × 归属进程</text>
+
+  <!-- 表头 -->
+  <g font-size="10.5" fill="#6e7681" font-family="monospace">
+    <text x="30" y="58">端口</text>
+    <text x="110" y="58">协议</text>
+    <text x="190" y="58">绑定地址</text>
+    <text x="330" y="58">对外可达性</text>
+    <text x="480" y="58">进程 / 用途</text>
+  </g>
+  <line x1="30" y1="66" x2="970" y2="66" stroke="#30363d"/>
+
+  <g font-size="10.5" font-family="monospace">
+    <!-- 危险 -->
+    <rect x="26" y="74" width="948" height="26" rx="3" fill="rgba(248,81,73,.10)"/>
+    <text x="30" y="92" fill="#f85149" font-weight="700">3200</text>
+    <text x="110" y="92" fill="#9198a1">tcp</text>
+    <text x="190" y="92" fill="#f85149">0.0.0.0 + ::</text>
+    <text x="330" y="92" fill="#f85149">全部接口（含 WAN）</text>
+    <text x="480" y="92" fill="#9198a1">FastNet — GL 测速服务，防火墙放行了 WAN</text>
+
+    <!-- WEB -->
+    <rect x="26" y="104" width="948" height="26" rx="3" fill="rgba(88,166,255,.07)"/>
+    <text x="30" y="122" fill="#58a6ff" font-weight="700">80 / 443</text>
+    <text x="110" y="122" fill="#9198a1">tcp</text>
+    <text x="190" y="122" fill="#58a6ff">0.0.0.0 + ::</text>
+    <text x="330" y="122" fill="#3fb950">LAN 可达 · WAN 被 DROP</text>
+    <text x="480" y="122" fill="#9198a1">nginx → <tspan fill="#bc8cff">GL 后台 gl-ui</tspan></text>
+
+    <rect x="26" y="134" width="948" height="26" rx="3" fill="rgba(88,166,255,.07)"/>
+    <text x="30" y="152" fill="#58a6ff" font-weight="700">8080 / 8443</text>
+    <text x="110" y="152" fill="#9198a1">tcp</text>
+    <text x="190" y="152" fill="#58a6ff">0.0.0.0 + ::</text>
+    <text x="330" y="152" fill="#3fb950">LAN 可达 · WAN 被 DROP</text>
+    <text x="480" y="152" fill="#9198a1">uhttpd → <tspan fill="#58a6ff">LuCI</tspan></text>
+
+    <rect x="26" y="164" width="948" height="26" rx="3" fill="rgba(88,166,255,.07)"/>
+    <text x="30" y="182" fill="#58a6ff">22</text>
+    <text x="110" y="182" fill="#9198a1">tcp</text>
+    <text x="190" y="182" fill="#58a6ff">0.0.0.0 + ::</text>
+    <text x="330" y="182" fill="#3fb950">LAN 可达 · WAN 被 DROP</text>
+    <text x="480" y="182" fill="#9198a1">dropbear SSH</text>
+
+    <rect x="26" y="194" width="948" height="26" rx="3" fill="rgba(88,166,255,.07)"/>
+    <text x="30" y="212" fill="#58a6ff">7681</text>
+    <text x="110" y="212" fill="#9198a1">tcp</text>
+    <text x="190" y="212" fill="#3fb950">192.168.8.1 仅</text>
+    <text x="330" y="212" fill="#3fb950">仅 LAN</text>
+    <text x="480" y="212" fill="#9198a1">ttyd 网页终端</text>
+
+    <!-- DNS -->
+    <rect x="26" y="224" width="948" height="26" rx="3" fill="rgba(63,185,80,.07)"/>
+    <text x="30" y="242" fill="#3fb950" font-weight="700">53</text>
+    <text x="110" y="242" fill="#9198a1">tcp+udp</text>
+    <text x="190" y="242" fill="#9198a1">127.0.0.1 / 192.168.8.1</text>
+    <text x="330" y="242" fill="#3fb950">仅 LAN + 本机</text>
+    <text x="480" y="242" fill="#9198a1">dnsmasq（注意还绑了 198.18.0.0/16）</text>
+
+    <rect x="26" y="254" width="948" height="26" rx="3" fill="rgba(63,185,80,.07)"/>
+    <text x="30" y="272" fill="#3fb950">3000 / 3053</text>
+    <text x="110" y="272" fill="#9198a1">tcp</text>
+    <text x="190" y="272" fill="#9198a1">::: （全部）</text>
+    <text x="330" y="272" fill="#3fb950">LAN 可达</text>
+    <text x="480" y="272" fill="#9198a1">AdGuardHome 面板 / DNS</text>
+
+    <!-- PROXY -->
+    <rect x="26" y="284" width="948" height="26" rx="3" fill="rgba(188,140,255,.09)"/>
+    <text x="30" y="302" fill="#bc8cff" font-weight="700">7890</text>
+    <text x="110" y="302" fill="#9198a1">tcp</text>
+    <text x="190" y="302" fill="#bc8cff">::: （全部）</text>
+    <text x="330" y="302" fill="#d29922">LAN 可用代理</text>
+    <text x="480" y="302" fill="#9198a1">clash HTTP 代理</text>
+
+    <rect x="26" y="314" width="948" height="26" rx="3" fill="rgba(188,140,255,.09)"/>
+    <text x="30" y="332" fill="#bc8cff">7891</text>
+    <text x="110" y="332" fill="#9198a1">tcp</text>
+    <text x="190" y="332" fill="#bc8cff">:::</text>
+    <text x="330" y="332" fill="#d29922">LAN 可用代理</text>
+    <text x="480" y="332" fill="#9198a1">clash SOCKS5</text>
+
+    <rect x="26" y="344" width="948" height="26" rx="3" fill="rgba(188,140,255,.09)"/>
+    <text x="30" y="362" fill="#bc8cff">7892 / 7893</text>
+    <text x="110" y="362" fill="#9198a1">tcp</text>
+    <text x="190" y="362" fill="#bc8cff">:::</text>
+    <text x="330" y="362" fill="#6e7681">内部重定向 / 混合代理</text>
+    <text x="480" y="362" fill="#9198a1">clash redir / mixed（<tspan fill="#bc8cff">7893 = 代理客户端接入点</tspan>）</text>
+
+    <rect x="26" y="374" width="948" height="26" rx="3" fill="rgba(188,140,255,.09)"/>
+    <text x="30" y="392" fill="#bc8cff">7895</text>
+    <text x="110" y="392" fill="#9198a1">tcp</text>
+    <text x="190" y="392" fill="#bc8cff">:::</text>
+    <text x="330" y="392" fill="#6e7681">内部</text>
+    <text x="480" y="392" fill="#9198a1">clash tproxy</text>
+
+    <rect x="26" y="404" width="948" height="26" rx="3" fill="rgba(188,140,255,.09)"/>
+    <text x="30" y="422" fill="#bc8cff">7874</text>
+    <text x="110" y="422" fill="#9198a1">tcp</text>
+    <text x="190" y="422" fill="#bc8cff">:::</text>
+    <text x="330" y="422" fill="#6e7681">内部 DNS</text>
+    <text x="480" y="422" fill="#9198a1"><tspan fill="#3fb950">clash DNS —— dnsmasq 的上游就是它</tspan></text>
+
+    <rect x="26" y="434" width="948" height="26" rx="3" fill="rgba(210,153,34,.09)"/>
+    <text x="30" y="452" fill="#d29922" font-weight="700">9090</text>
+    <text x="110" y="452" fill="#9198a1">tcp</text>
+    <text x="190" y="452" fill="#d29922">:::</text>
+    <text x="330" y="452" fill="#d29922">LAN 可达（有密码）</text>
+    <text x="480" y="452" fill="#9198a1">clash 控制器 → metacubexd 面板</text>
+  </g>
+</svg>
+<figcaption>图 6 · 实测 netstat 监听表整理。颜色：红=需关注、蓝=管理入口、绿=正常服务、紫=代理栈、黄=有鉴权</figcaption>
+</figure>
+
+<h3>9.1 哪些端口是"暴露的"、哪些不是</h3>
+<div class="tw"><table>
+<tr><th style="width:12%">端口</th><th style="width:22%">服务</th><th style="width:16%">WAN 侧可访问？</th><th>判断</th></tr>
+<tr><td>80 / 443 / 8080 / 8443 / 22</td><td>GL 后台 / LuCI / SSH</td><td><strong>不可</strong>（WAN zone <code>input=DROP</code>）</td><td><span class="tag t-ok">正常</span> 比很多出厂固件干净（很多机型默认开 22/443 到 WAN）</td></tr>
+<tr><td><strong>3200</strong></td><td>FastNet</td><td><strong>可以</strong>（firewall 有放行规则）</td><td><span class="tag t-warn">建议关注</span> GL 的测速服务对外开，是多余的暴露面</td></tr>
+<tr><td>3000 / 3053</td><td>AdGuardHome</td><td>不可（WAN DROP）</td><td><span class="tag t-ok">正常</span> 但 LAN 内任何人可访问面板</td></tr>
+<tr><td>9090</td><td>clash 控制器</td><td>不可</td><td><span class="tag t-ok">正常</span> 需要密码</td></tr>
+<tr><td>7890-7895 / 7874</td><td>clash 各端口</td><td>不可</td><td><span class="tag t-ok">正常</span> <code>intranet_allowed=1</code> 时 LAN 内可直接当代理用</td></tr>
+<tr><td>68/546 udp、IGMP、ICMPv6、MLD、IPSec(500/esp)</td><td>协议必需</td><td>放行</td><td><span class="tag t-ok">正常</span> 关掉会断网</td></tr>
+</table></div>
+
+<h2 id="s10"><span class="num">10</span>DNS 链路：本机最绕的一环</h2>
+
+<p>这台机器上<strong>装了 4 套 DNS 相关服务</strong>，但真正在链路上的只有一个。搞不清这点，你所有"DNS 不生效"的改动都会白做。</p>
+
+<figure>
+<svg viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="d1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <text x="500" y="26" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="700">实测 DNS 链路：谁是主角，谁是旁观者</text>
+
+  <!-- 主链 -->
+  <rect x="40" y="60" width="150" height="58" rx="7" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="115" y="82" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">客户端</text>
+  <text x="115" y="100" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">192.168.8.x</text>
+
+  <rect x="230" y="60" width="200" height="58" rx="7" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+  <text x="330" y="80" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">dnsmasq :53</text>
+  <text x="330" y="98" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">noresolv=1 · cachesize=0</text>
+  <text x="330" y="112" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">filter_aaaa=1</text>
+
+  <rect x="470" y="60" width="200" height="58" rx="7" fill="#2a1a3a" stroke="#bc8cff" stroke-width="2"/>
+  <text x="570" y="80" text-anchor="middle" fill="#bc8cff" font-size="11" font-weight="600">clash DNS :7874</text>
+  <text x="570" y="98" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">fake-ip 模式</text>
+  <text x="570" y="112" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">按规则分流解析</text>
+
+  <rect x="710" y="60" width="250" height="58" rx="7" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+  <text x="835" y="80" text-anchor="middle" fill="#d29922" font-size="11" font-weight="600">上游 DNS（按规则）</text>
+  <text x="835" y="98" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">国内直连 DoH / 国外经代理</text>
+  <text x="835" y="112" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">返回 198.18.x.x（fake-ip）</text>
+
+  <line x1="190" y1="89" x2="228" y2="89" stroke="#58a6ff" stroke-width="2" marker-end="url(#d1)"/>
+  <line x1="430" y1="89" x2="468" y2="89" stroke="#58a6ff" stroke-width="2" marker-end="url(#d1)"/>
+  <line x1="670" y1="89" x2="708" y2="89" stroke="#58a6ff" stroke-width="2" marker-end="url(#d1)"/>
+
+  <text x="330" y="140" text-anchor="middle" fill="#3fb950" font-size="9.5" font-family="monospace">server=127.0.0.1#7874</text>
+  <text x="330" y="154" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">（uci get dhcp 实测值）</text>
+
+  <!-- 分流说明 -->
+  <rect x="40" y="180" width="920" height="86" rx="9" fill="#161b22" stroke="#30363d"/>
+  <text x="60" y="204" fill="#e6edf3" font-size="11" font-weight="600">这条链路的三个关键设计（都在 UCI 里，可查可改）</text>
+  <text x="60" y="226" fill="#9198a1" font-size="10" font-family="monospace">noresolv=1 → 完全不用 /etc/resolv.conf 和 WAN 下发的 DNS，只认 server 指定的上游</text>
+  <text x="60" y="244" fill="#9198a1" font-size="10" font-family="monospace">cachesize=0 → dnsmasq 不缓存，缓存交给 clash（避免 stale 结果）</text>
+  <text x="60" y="262" fill="#9198a1" font-size="10" font-family="monospace">filter_aaaa=1 → 过滤 AAAA 记录（因为 IPv6 全关，见 network.wan6 与 dhcp.lan.ra=disabled）</text>
+
+  <!-- 旁观者 -->
+  <text x="500" y="304" text-anchor="middle" fill="#f85149" font-size="12" font-weight="700">以下三个装了、在跑，但不在主链路里</text>
+
+  <rect x="40" y="320" width="290" height="96" rx="8" fill="#1a0f0f" stroke="#f85149" stroke-dasharray="5 3"/>
+  <text x="185" y="342" text-anchor="middle" fill="#f85149" font-size="11" font-weight="600">AdGuardHome</text>
+  <text x="185" y="360" text-anchor="middle" fill="#9198a1" font-size="9.5" font-family="monospace">enabled=1（进程活）</text>
+  <text x="185" y="376" text-anchor="middle" fill="#f85149" font-size="9.5" font-family="monospace">dns_enabled=0（未接管）</text>
+  <text x="185" y="392" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">:3000 面板 / :3053 DNS</text>
+  <text x="185" y="407" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">旁挂 —— 没接到链路上</text>
+
+  <rect x="355" y="320" width="290" height="96" rx="8" fill="#161b22" stroke="#6e7681" stroke-dasharray="5 3"/>
+  <text x="500" y="342" text-anchor="middle" fill="#9198a1" font-size="11" font-weight="600">dnscrypt-proxy</text>
+  <text x="500" y="360" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">S18dnscrypt-proxy 有开机入口</text>
+  <text x="500" y="376" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">/etc/dnscrypt-proxy2/ 配置齐全</text>
+  <text x="500" y="392" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">但没在 netstat 监听列表里</text>
+  <text x="500" y="407" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">→ 当前未工作</text>
+
+  <rect x="670" y="320" width="290" height="96" rx="8" fill="#161b22" stroke="#6e7681" stroke-dasharray="5 3"/>
+  <text x="815" y="342" text-anchor="middle" fill="#9198a1" font-size="11" font-weight="600">dnsproxy</text>
+  <text x="815" y="360" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">S18dnsproxy 有开机入口</text>
+  <text x="815" y="376" text-anchor="middle" fill="#6e7681" font-size="9.5" font-family="monospace">同样不在监听列表</text>
+  <text x="815" y="392" text-anchor="middle" fill="#6e7681" font-size="9" font-family="monospace">→ 装了但未启用</text>
+
+  <rect x="40" y="440" width="920" height="80" rx="9" fill="rgba(88,166,255,.07)" stroke="#58a6ff"/>
+  <text x="60" y="464" fill="#58a6ff" font-size="11" font-weight="600">玩法提示</text>
+  <text x="60" y="484" fill="#9198a1" font-size="10" font-family="monospace">① 想用 AdGuardHome 做去广告 → 必须把 dhcp.server 改成 127.0.0.1#3053，并把 AGH 上游指向 127.0.0.1#7874</text>
+  <text x="60" y="502" fill="#9198a1" font-size="10" font-family="monospace">② 想给 dnsmasq 加自定义域名 → 用 uci add_list dhcp.@dnsmasq[0].address，或 /etc/hosts 或 /tmp/dnsmasq.d/</text>
+  <text x="60" y="518" fill="#9198a1" font-size="10" font-family="monospace">③ 注意 AGH 面板密码 ≠ 路由器密码，实测 root/路由器密码 返回 403</text>
+</svg>
+<figcaption>图 7 · DNS 主链路 vs 旁挂服务（依据 <code>uci show dhcp</code> 与实测 netstat 监听表）</figcaption>
+</figure>
+
+<h3>10.1 实测的 dnsmasq 关键参数</h3>
+<div class="tw"><table>
+<tr><th style="width:32%">UCI 键</th><th style="width:16%">实测值</th><th>含义</th></tr>
+<tr><td><code>dhcp.@dnsmasq[0].server</code></td><td><code>127.0.0.1#7874</code></td><td><strong>唯一上游 = OpenClash 的 DNS</strong></td></tr>
+<tr><td><code>noresolv</code></td><td><code>1</code></td><td>忽略 WAN 下发的 DNS 和 <code>/etc/resolv.conf</code></td></tr>
+<tr><td><code>cachesize</code></td><td><code>0</code></td><td>dnsmasq 不缓存（缓存交给 clash）</td></tr>
+<tr><td><code>filter_aaaa</code></td><td><code>1</code></td><td>过滤 IPv6 AAAA（配合 IPv6 全关）</td></tr>
+<tr><td><code>domain</code></td><td><code>lan</code></td><td>内网域名后缀，<code>xxx.lan</code> 可解析</td></tr>
+<tr><td><code>localservice</code> / <code>nonwildcard</code></td><td><code>1</code> / <code>1</code></td><td>只响应本地子网查询，防 DNS 放大攻击</td></tr>
+<tr><td><code>rebind_protection</code></td><td><code>0</code></td><td><span class="tag t-warn">已关</span> DNS 重绑定保护关闭（因为 clash 需要返回私有地址）</td></tr>
+<tr><td><code>ednspacket_max</code></td><td><code>1232</code></td><td>EDNS 缓冲大小（防 UDP 分片）</td></tr>
+<tr><td><code>dhcp.lan.ra</code> / <code>dhcpv6</code></td><td><code>disabled</code> / <code>disabled</code></td><td>IPv6 完全关闭</td></tr>
+<tr><td><code>dhcp.lan.limit</code></td><td><code>150</code></td><td>地址池 <code>.100 ~ .249</code>，租期 <code>12h</code></td></tr>
+</table></div>
+
+<div class="box warn">
+  <b>还有一个实测细节：dnsmasq 绑在 <code>198.18.0.0/16</code> 上</b>
+  <p><code>netstat</code> 里能看到 dnsmasq 监听 <code>198.18.0.0:53</code>。这是 OpenClash <strong>fake-ip 模式的地址池</strong>。它意味着：客户端拿到的 DNS 结果如果是 <code>198.18.x.x</code>，这个"假 IP"被发回本机时 dnsmasq 能应答。这也是为什么 <strong>局域网里绝对不要用 <code>198.18.0.0/16</code> 作为任何网段</strong>——会和 fake-ip 撞车，表现为"某些网站完全打不开"。</p>
+</div>
+<h2 id="s11"><span class="num">11</span>三套并存的 Web 前端</h2>
+
+<p>这是这台机器<strong>最容易让人困惑、也最有玩头</strong>的地方。同一台路由器上有<strong>三套完全独立的 Web 界面</strong>，它们各自有不同的端口、不同的技术栈、不同的 API、不同的菜单——但读写的是<strong>同一批 UCI 配置</strong>。</p>
+
+<figure>
+<svg viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="w1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6e7681"/>
+    </marker>
+  </defs>
+
+  <!-- 三套前端 -->
+  <rect x="30" y="50" width="300" height="200" rx="10" fill="#1a1428" stroke="#bc8cff" stroke-width="2"/>
+  <text x="180" y="76" text-anchor="middle" fill="#bc8cff" font-size="13" font-weight="700">① GL 后台 gl-ui</text>
+  <text x="180" y="98" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">http://192.168.8.1</text>
+  <text x="180" y="114" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">https://192.168.8.1</text>
+  <line x1="50" y1="124" x2="310" y2="124" stroke="#30363d"/>
+  <g font-size="10" fill="#9198a1" font-family="monospace">
+    <text x="50" y="144">前端：Vue SPA（/www/js/app.ab987315.js.gz 569KB）</text>
+    <text x="50" y="162">服务：nginx :80/:443（4 worker）</text>
+    <text x="50" y="180">API：POST /rpc（Lua → oui-rpc.lua）</text>
+    <text x="50" y="198">组件：/usr/share/gl-ngx/oui-*.lua</text>
+    <text x="50" y="216">主题：不可换（编译进 bundle）</text>
+    <text x="50" y="234">特点：GL 官方功能最全，含向导/云/OTA</text>
+  </g>
+
+  <rect x="350" y="50" width="300" height="200" rx="10" fill="#101d2e" stroke="#58a6ff" stroke-width="2"/>
+  <text x="500" y="76" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">② LuCI</text>
+  <text x="500" y="98" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">http://192.168.8.1:8080/cgi-bin/luci</text>
+  <text x="500" y="114" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">https://192.168.8.1:8443/cgi-bin/luci</text>
+  <line x1="370" y1="124" x2="630" y2="124" stroke="#30363d"/>
+  <g font-size="10" fill="#9198a1" font-family="monospace">
+    <text x="370" y="144">前端：Lua 模板 + JS 混合</text>
+    <text x="370" y="162">服务：uhttpd :8080/:8443</text>
+    <text x="370" y="180">API：/ubus（JSON-RPC）</text>
+    <text x="370" y="198">控制器：/usr/lib/lua/luci/controller/</text>
+    <text x="370" y="216">主题：argon <tspan fill="#3fb950">（可换，4 个可选）</tspan></text>
+    <text x="370" y="234">特点：<tspan fill="#58a6ff">OpenClash / iStore 的界面都在这</tspan></text>
+  </g>
+
+  <rect x="670" y="50" width="300" height="200" rx="10" fill="#0f1f14" stroke="#3fb950" stroke-width="2"/>
+  <text x="820" y="76" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">③ iStore 应用商店</text>
+  <text x="820" y="98" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">LuCI → 系统 → iStore</text>
+  <line x1="690" y1="124" x2="950" y2="124" stroke="#30363d"/>
+  <g font-size="10" fill="#9198a1" font-family="monospace">
+    <text x="690" y="144">前端：/www/luci-static/istore/</text>
+    <text x="690" y="162">后端：controller/istore_backend.lua</text>
+    <text x="690" y="180">包源：/etc/config/istore-opkg</text>
+    <text x="690" y="198">super_arch：aarch64</text>
+    <text x="690" y="216">hide_docker：1</text>
+    <text x="690" y="234">特点：一键装 <tspan fill="#3fb950">luci-app-* 全家桶</tspan></text>
+  </g>
+
+  <!-- 汇聚 -->
+  <line x1="180" y1="250" x2="180" y2="290" stroke="#6e7681" stroke-width="1.5" marker-end="url(#w1)"/>
+  <line x1="500" y1="250" x2="500" y2="290" stroke="#6e7681" stroke-width="1.5" marker-end="url(#w1)"/>
+  <line x1="820" y1="250" x2="820" y2="290" stroke="#6e7681" stroke-width="1.5" marker-end="url(#w1)"/>
+
+  <!-- 中间层 -->
+  <rect x="30" y="295" width="940" height="76" rx="9" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="500" y="320" text-anchor="middle" fill="#ffa657" font-size="12" font-weight="700">共同底座：ubus 总线 + rpcd RPC 守护 + UCI</text>
+  <text x="500" y="342" text-anchor="middle" fill="#9198a1" font-size="10" font-family="monospace">/sbin/ubusd (PID 1195) · /sbin/rpcd (PID 2905) · /etc/config/*</text>
+  <text x="500" y="360" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">三个前端只是三种"壳"，底层调的是同一批 ubus 对象和 UCI 文件</text>
+
+  <line x1="500" y1="371" x2="500" y2="400" stroke="#6e7681" stroke-width="1.5" marker-end="url(#w1)"/>
+
+  <!-- 配置 -->
+  <rect x="30" y="405" width="940" height="60" rx="9" fill="#101d2e" stroke="#58a6ff"/>
+  <text x="500" y="430" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">/etc/config/  （80 个文件，唯一真相源）</text>
+  <text x="500" y="450" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">network · wireless · firewall · dhcp · openclash · adguardhome · luci · glconfig …</text>
+
+  <line x1="500" y1="465" x2="500" y2="494" stroke="#6e7681" stroke-width="1.5" marker-end="url(#w1)"/>
+
+  <!-- 服务 -->
+  <rect x="30" y="499" width="940" height="60" rx="9" fill="#1a2216" stroke="#3fb950"/>
+  <text x="500" y="524" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">/etc/init.d/* → 实际服务进程</text>
+  <text x="500" y="544" text-anchor="middle" fill="#6e7681" font-size="10" font-family="monospace">netifd · dnsmasq · openclash · AdGuardHome · netifyd · nginx · uhttpd …</text>
+
+  <text x="500" y="590" text-anchor="middle" fill="#d29922" font-size="10.5" font-family="monospace">⚠️ 三个前端写同一个文件时，后写的赢；GL 后台的"应用"按钮会主动覆盖部分配置</text>
+</svg>
+<figcaption>图 8 · 三套前端的真实关系：三个壳，一个底座，一个配置文件集</figcaption>
+</figure>
+
+<h3>11.1 该用哪一个？</h3>
+<div class="tw"><table>
+<tr><th style="width:14%">要做的事</th><th style="width:20%">用哪个界面</th><th>为什么</th></tr>
+<tr><td>改 Wi-Fi、WAN、LAN 口模式</td><td><strong>GL 后台</strong>（:80）</td><td>GL 后台有专门的端口模式切换、向导、云管理。LuCI 里改了 GL 可能覆盖回去</td></tr>
+<tr><td>配 OpenClash</td><td><strong>LuCI</strong>（:8080 → 服务 → OpenClash）</td><td>OpenClash 的完整界面只在 LuCI 里</td></tr>
+<tr><td>装第三方插件</td><td><strong>iStore</strong> 或 GL 的"插件"</td><td>iStore 能从 OpenWrt 源一键装；GL 插件页只有 GL 认证过的</td></tr>
+<tr><td>配防火墙、DHCP、静态路由</td><td><strong>LuCI</strong></td><td>LuCI 的 CBI 表单直接对应 UCI，最透明</td></tr>
+<tr><td>改主题、改登录页</td><td><strong>LuCI</strong></td><td>主题是 LuCI 的概念，GL 后台主题编译在 bundle 里改不了</td></tr>
+<tr><td>看客户端列表、流量</td><td>两者都行</td><td>GL 的更好看（有实时速率图），LuCI 的更细</td></tr>
+<tr><td>刷固件、恢复出厂</td><td><strong>GL 后台</strong></td><td>GL 的 OTA 与本地升级流程都在后台；LuCI 的"备份/刷机"是通用的，但 GL 加了校验</td></tr>
+</table></div>
+
+<h3>11.2 LuCI 的目录结构（想开发插件就看这）</h3>
+<pre><code>/usr/lib/lua/luci/
+├── controller/          <span class="c">← 路由：URL → 调用哪个 model</span>
+│   ├── admin/           <span class="c">← /admin/* 下的页面（原版 OpenWrt 结构）</span>
+│   ├── openclash.lua    <span class="c">← OpenClash 的路由入口</span>
+│   ├── istore_backend.lua
+│   ├── quickstart.lua
+│   ├── filetransfer.lua
+│   ├── diskman.lua
+│   ├── fastnet.lua
+│   ├── floatip.lua
+│   ├── eqos.lua
+│   ├── ddnsto.lua
+│   ├── linkease_apps.lua / linkease_auth.lua
+│   ├── store.lua
+│   └── tasks-lib.lua
+├── model/cbi/           <span class="c">← 表单定义：哪个 UCI 键映射成哪个控件</span>
+├── view/                <span class="c">← HTML 模板（.htm），部分是 Lua 生成的</span>
+│   ├── themes/argon/    <span class="c">← ★ 登录页模板 sysauth.htm 在这</span>
+│   └── admin_status/ cbi/ diskman/ fastnet/ …
+├── i18n/                <span class="c">← 翻译文件（.lmo）</span>
+├── dispatcher.lua       <span class="c">← URL 分发器</span>
+├── cbi.lua              <span class="c">← 表单引擎</span>
+├── template.lua         <span class="c">← 模板引擎</span>
+└── sys.lua / fs.lua / util.lua / http.lua
+
+/www/luci-static/
+├── argon/               <span class="c">← ★ 当前在用的主题</span>
+│   ├── cascade.css
+│   ├── css/  fonts/  img/  background/
+│   └── (登录页背景取图逻辑在 view/themes/argon/sysauth.htm)
+├── bootstrap/           <span class="c">← 备用主题（明）</span>
+├── bootstrap-dark/      <span class="c">← 备用主题（暗）</span>
+├── bootstrap-light/
+├── resources/           <span class="c">← LuCI 的 JS 框架（view/ 下是各页面）</span>
+├── istore/ quickstart/ fastnet/ ddnsto/  <span class="c">← 各插件的静态资源</span></code></pre>
+
+<h3>11.3 GL 后台的技术细节</h3>
+<div class="tw"><table>
+<tr><th style="width:30%">项目</th><th>实测值</th></tr>
+<tr><td>前端 bundle</td><td><code>/www/js/app.ab987315.js.gz</code> 569KB（压缩后），Vue 单页应用</td></tr>
+<tr><td>注入脚本</td><td><code>/www/js/glinjector-95548338.js</code> 16KB + <code>/etc/glinjector/core.js</code>——用于把 GL 的菜单注入 LuCI</td></tr>
+<tr><td>后端 Lua</td><td><code>/usr/share/gl-ngx/</code>：<code>oui-rpc.lua</code>（RPC 入口）、<code>oui-access.lua</code>（鉴权）、<code>oui-ws.lua</code>（WebSocket）、<code>oui-upload.lua</code>/<code>oui-download.lua</code>（文件上下传）、<code>oui-init.lua</code>（初始化）</td></tr>
+<tr><td>多语言</td><td><code>/www/i18n/</code> 1.1MB + <code>/www/js/langs-label.json</code></td></tr>
+<tr><td>证书</td><td><code>/etc/nginx/nginx.cer</code> / <code>nginx.key</code></td></tr>
+<tr><td>路由入口</td><td><code>index gl_home.html;</code>，硬编码在 <code>/etc/nginx/conf.d/gl.conf</code></td></tr>
+</table></div>
+
+<div class="box info">
+  <b>玩法：GL 菜单是怎么"长进" LuCI 的</b>
+  <p><code>/etc/glinjector/core.js</code> + <code>/www/js/glinjector-*.js</code> 这一套是<strong>注入器</strong>。它会在 LuCI 页面加载后动态插入 GL 的菜单项和样式。所以如果你在 LuCI 里看到"GL 风格"的菜单条目，那不是 LuCI 原生的，是注入进去的。<strong>想彻底分离两套界面，改这里。</strong></p>
+</div>
+
+<h2 id="s12"><span class="num">12</span>扩展接口清单（你实际能用的钩子）</h2>
+
+<p>下面每一条都是<strong>这台机器上真实存在的扩展点</strong>，按"改动风险"从低到高排。所有条目都已实测确认路径存在。</p>
+
+<h3>12.1 零风险层：改文件就行，不碰系统</h3>
+<div class="tw"><table>
+<tr><th style="width:30%">接口</th><th style="width:26%">能做什么</th><th>生效方式</th></tr>
+<tr><td><code>/etc/hosts</code></td><td>内网域名映射、屏蔽指定域名</td><td>立即（dnsmasq 需 <code>/etc/init.d/dnsmasq reload</code>）</td></tr>
+<tr><td><code>/tmp/dnsmasq.d/</code></td><td>临时 DNS 规则（<code>address=/ads.example.com/0.0.0.0</code>）</td><td><code>reload</code> 后生效，<strong>重启丢失</strong></td></tr>
+<tr><td><code>/etc/config/</code> 里任意项</td><td>所有功能配置</td><td><code>uci commit</code> + 对应服务 reload</td></tr>
+<tr><td><code>/www/luci-static/</code></td><td>换主题 CSS、换图标、换背景图</td><td><strong>刷新页面即可，不用重启</strong></td></tr>
+<tr><td><code>/usr/lib/lua/luci/view/themes/argon/</code></td><td>改登录页模板</td><td>清 <code>/tmp/luci-*</code> 缓存后刷新</td></tr>
+<tr><td><code>/root/</code></td><td>放你自己的脚本、备份、SSH 公钥</td><td>立即</td></tr>
+</table></div>
+
+<h3>12.2 低风险层：开机钩子</h3>
+<div class="tw"><table>
+<tr><th style="width:30%">接口</th><th style="width:22%">触发时机</th><th>典型用途 / 注意</th></tr>
+<tr><td><code>/etc/rc.local</code></td><td>开机最后，<strong>一次</strong></td><td>起自定义程序、改 sysctl。<strong>⚠️ 本机有残留，见 6.4</strong></td></tr>
+<tr><td><code>/etc/firewall.user</code></td><td><strong>每次防火墙重建</strong>（开机 + reload + 改配置）</td><td>自定义 iptables 规则。<strong>规则类改动必须放这，不能放 rc.local</strong></td></tr>
+<tr><td><code>/etc/crontabs/root</code></td><td>cron 调度</td><td>定时任务。<code>/etc/init.d/cron restart</code> 生效</td></tr>
+<tr><td><code>/etc/hotplug.d/iface/</code></td><td>网络接口 up/down 时</td><td>"WAN 上线后做某事"（如自动更新 DDNS）</td></tr>
+<tr><td><code>/etc/hotplug.d/block/</code></td><td><strong>U 盘/硬盘插拔时</strong></td><td>自动挂载、自动备份到这盘</td></tr>
+<tr><td><code>/etc/hotplug.d/usb/</code></td><td>USB 设备插拔时</td><td>插网卡自动切换、插打印机自动共享</td></tr>
+<tr><td><code>/etc/gl-switch.d/</code></td><td>物理开关/按键</td><td>把外壳上的开关改成"一键切代理/关 Wi-Fi"</td></tr>
+<tr><td><code>/etc/gl-reset-network.d/</code></td><td>重置网络时</td><td>重置后自动恢复某些配置</td></tr>
+<tr><td><code>/etc/sysctl.d/*.conf</code></td><td>开机加载</td><td>内核参数调优（conntrack、TCP 拥塞控制）</td></tr>
+</table></div>
+
+<h3>12.3 中风险层：装包与写 init 脚本</h3>
+<div class="tw"><table>
+<tr><th style="width:30%">接口</th><th>说明</th></tr>
+<tr><td><code>opkg install &lt;pkg&gt;</code></td><td>包源已配 3 个 GL 官方源（<code>/etc/opkg/distfeeds.conf</code>）。<strong>669 个包已装</strong>。<br>⚠️ GL 源里 <code>luci-app-*</code> 不全，缺的要用 iStore 从 OpenWrt 官方源装</td></tr>
+<tr><td>iStore 应用商店</td><td><code>/etc/config/istore-opkg</code> 配 iStore 专用包源，和 opkg 官方源<strong>分开管理</strong></td></tr>
+<tr><td><code>/etc/init.d/mysvc</code> + <code>enable</code></td><td>标准 OpenWrt 服务脚本（<code>USE_PROCD=1</code>）。写对了就有<strong>崩溃自动重启</strong>（procd 托管）</td></tr>
+<tr><td><code>/etc/uci-defaults/</code></td><td>首次开机执行的配置脚本（<code>S90init_new_provider.sh</code> 就是这类）。<strong>执行后自动删除自己</strong></td></tr>
+<tr><td><code>insmod / modprobe</code></td><td>加载 <code>/lib/modules/5.4.238/</code> 下的内核模块（<code>lsmod</code> 能看到大量 <code>kmod-*</code> 已装）</td></tr>
+</table></div>
+
+<h3>12.4 高风险层：动内核模块与硬件</h3>
+<div class="tw"><table>
+<tr><th style="width:30%">接口</th><th>说明 / 风险</th></tr>
+<tr><td><code>/sys/kernel/debug/hnat/</code></td><td>HNAT 状态与开关。<strong>可读是安全的</strong>，写入（改加速策略）可能导致转发异常</td></tr>
+<tr><td><code>/sys/class/leds/</code></td><td>LED 控制（GL 的 <code>gl_led</code> 已经在管，别和它抢）</td></tr>
+<tr><td><code>/sys/kernel/debug/ieee80211/</code></td><td>无线调试。<strong>可读</strong>，写入会掉线</td></tr>
+<tr><td><code>tc qdisc</code></td><td>流量整形。⚠️ <strong>会绕过 HNAT</strong>，开整形网速必掉</td></tr>
+<tr><td><code>/etc/config/mtkhnat</code> + <code>fullconenat</code></td><td>硬件加速与全锥 NAT 配置。改错 = 断网或 NAT 类型变差</td></tr>
+<tr><td><code>fw_setenv</code>（u-boot-env）</td><td>⚠️⚠️ <strong>改坏直接不进系统</strong>，只能靠 TFTP 救砖</td></tr>
+<tr><td><code>/dev/mmcblk0p2</code>（factory 分区）</td><td>⚠️⚠️ Wi-Fi 校准数据。<strong>动了 = Wi-Fi 永久失校</strong>，基本只能官方 RMA</td></tr>
+</table></div>
+
+<div class="box dang">
+  <b>这台机器上"绝对不能碰"的 3 个东西</b>
+  <ol style="margin-top:6px">
+    <li><code>/dev/mmcblk0p2</code>（factory）—— Wi-Fi 校准 + MAC 池。写坏 = 无线永久失效。</li>
+    <li><code>/dev/mmcblk0p1</code>（u-boot-env）—— bootcmd/MAC。写坏 = 不启动，要 TFTP 救砖。</li>
+    <li><code>/bin/busybox</code> —— 所有基础命令（ls/cat/sh/vi/df…）都是它。换错 = 系统全废且没法用命令行修。</li>
+  </ol>
+</div>
+
+<h2 id="s13"><span class="num">13</span>可玩方向：按"投入/收益"排的清单</h2>
+
+<div class="box info">
+  <b>前置结论：你这台机器的资源画像</b>
+  <p><strong>空间富裕（剩 6.6GB）、内存中等（可用 ~489MB）、CPU 极闲（load 0.11）、有 HNAT 硬件加速、有 USB 3.0、有第二个可变 WAN 口、有 eMMC 而不是小 flash。</strong>这意味着它适合跑"常驻但有节制"的服务，不适合跑一堆重型容器/虚拟机。</p>
+</div>
+
+<h3>13.1 立刻能玩（半小时内，零风险）</h3>
+<div class="tw"><table>
+<tr><th style="width:26%">玩法</th><th style="width:34%">怎么做</th><th>价值</th></tr>
+<tr><td><strong>换 LuCI 主题</strong></td><td><code>uci set luci.main.mediaurlbase='/luci-static/bootstrap-dark'</code> + commit。可选：argon / bootstrap / bootstrap-dark / bootstrap-light</td><td>界面观感。<strong>纯静态，不用重启</strong></td></tr>
+<tr><td><strong>给局域网设备固定 IP</strong></td><td>LuCI → 网络 → DHCP/DNS → 静态地址分配；或 <code>uci add dhcp host</code></td><td>NAS/打印机/摄像头不用每次找 IP</td></tr>
+<tr><td><strong>启用访客 Wi-Fi 隔离</strong></td><td>GL 后台 → 无线 → 访客网络（当前已禁用但配置还在，<code>br-guest</code> 是空的）</td><td>给来客单独 SSID，与 LAN 隔离</td></tr>
+<tr><td><strong>看 HNAT 加速状态</strong></td><td><code>cat /sys/kernel/debug/hnat/all_entry</code></td><td>确认硬件加速在工作，理解性能来源</td></tr>
+<tr><td><strong>对比出厂配置</strong></td><td><code>diff /rom/etc/config/firewall /etc/config/firewall</code></td><td>知道自己改了啥，心里有底</td></tr>
+<tr><td><strong>清理 <code>/tmp</code> 里的垃圾</strong></td><td><code>ls -la /tmp | sort -k5 -rn | head</code> 看大户</td><td>释放内存（<code>/tmp</code> 是内存盘）</td></tr>
+</table></div>
+
+<h3>13.2 值得投入（一两天，需要一点动手）</h3>
+<div class="tw"><table>
+<tr><th style="width:24%">玩法</th><th style="width:40%">要点</th><th>风险</th></tr>
+<tr><td><strong>U 盘/移动硬盘做 NAS</strong></td><td>USB 3.0 口空着。挂到 <code>/mnt</code>，开 Samba/DLNA/WebDAV。<br>⚠️ 本机 <code>minidlna</code> 开着但媒体目录指向不存在的 <code>/tmp/mountd/disk1_part1</code>，是空转状态</td><td><span class="tag t-warn">中</span> 挂载配置写错不影响开机，但要避免用 <code>/dev/sdaN</code>（应用 UUID）</td></tr>
+<tr><td><strong>lan1 做第二 WAN + 故障切换</strong></td><td><code>eth_ports_config_map.secondwan.support_wan='1'</code>，GL 后台可切。<code>kmwan</code> 已在跑</td><td><span class="tag t-warn">中</span> 切换瞬间会断网；配错路由会环路</td></tr>
+<tr><td><strong>AdGuard Home 真正接管 DNS</strong></td><td>把 <code>dhcp.@dnsmasq[0].server</code> 改成 <code>127.0.0.1#3053</code>，AGH 上游指 <code>127.0.0.1#7874</code>。<br><strong>当前 <code>dns_enabled=0</code>，AGH 只在旁边看着</strong></td><td><span class="tag t-warn">中</span> 顺序配错 = 全网 DNS 挂掉（要先配好 AGH 再改 dnsmasq）</td></tr>
+<tr><td><strong>OpenClash 自定义规则生效</strong></td><td><code>custom/</code> 下已有 15 个文件，但 <code>enable_custom_clash_rules=0</code>、<code>enable_custom_dns=0</code> → <strong>当前全部没生效</strong></td><td><span class="tag t-ok">低</span> 只改自己写的规则文件</td></tr>
+<tr><td><strong>网页终端 / SSH 免密</strong></td><td><code>ttyd</code> 已在 7681（仅 LAN）；把公钥放 <code>/etc/dropbear/authorized_keys</code></td><td><span class="tag t-ok">低</span></td></tr>
+<tr><td><strong>开机自启自己的脚本</strong></td><td>简单版 <code>/etc/rc.local</code>；正规版写 <code>/etc/init.d/mysvc</code> + procd（有崩溃重启）</td><td><span class="tag t-ok">低</span> 写错只影响启动那一步</td></tr>
+<tr><td><strong>给物理开关绑自定义动作</strong></td><td><code>/etc/gl-switch.d/</code> 放脚本</td><td><span class="tag t-ok">低</span></td></tr>
+</table></div>
+
+<h3>13.3 进阶（要读代码，且会改到系统行为）</h3>
+<div class="tw"><table>
+<tr><th style="width:24%">玩法</th><th style="width:42%">说明</th><th>风险</th></tr>
+<tr><td><strong>自己写 LuCI 页面</strong></td><td>在 <code>/usr/lib/lua/luci/controller/</code> 加 <code>.lua</code> 定义路由，<code>model/cbi/</code> 加表单，<code>view/</code> 加模板</td><td><span class="tag t-warn">中</span> 语法错误会让整个 LuCI 白屏</td></tr>
+<tr><td><strong>改 GL 后台菜单</strong></td><td><code>/etc/glinjector/core.js</code>（注入器）</td><td><span class="tag t-warn">中</span> 改坏 GL 后台会白屏，但 LuCI 还能进</td></tr>
+<tr><td><strong>跑 Docker</strong></td><td>GL 的 <code>istore.hide_docker='1'</code>（隐藏了 Docker 入口），<code>/opt</code> 和 overlay 空间都够。<br>⚠️ 但 1GB 内存 + ARM64 + 没有 cgroup 限额优化，跑一两个轻量容器是上限</td><td><span class="tag t-warn">中</span> 内存压力，且 Docker 会绕过 HNAT</td></tr>
+<tr><td><strong>内核级分流（TPROXY/nftables）</strong></td><td>替代 OpenClash 的 <code>iptables</code> 重定向，性能更好</td><td><span class="tag t-warn">中</span> 规则写错立刻断网，且 remote 救援要靠 SSH 或串口</td></tr>
+<tr><td><strong>调 conntrack 表</strong></td><td><code>buckets=8192</code>、当前 <code>count=500</code>。P2P/多设备可适当调大</td><td><span class="tag t-ok">低</span> 只吃内存</td></tr>
+<tr><td><strong>抓包分析</strong></td><td><code>tcpdump</code>（需确认已装）+ <code>/sys/fs/bpf</code>。DSA 架构下能对单个 <code>lanN</code> 抓</td><td><span class="tag t-ok">低</span> 只吃 CPU</td></tr>
+</table></div>
+
+<h3>13.4 不建议做（收益低或风险高）</h3>
+<div class="tw"><table>
+<tr><th style="width:26%">想法</th><th>为什么别做</th></tr>
+<tr><td>extroot（把系统搬到 U 盘扩容）</td><td><strong>你已经有 6.6GB 空闲</strong>，完全不需要。而且 f2fs+loop 的结构改成 extroot 风险远大于收益</td></tr>
+<tr><td>开 SQM/QoS 整形</td><td>会<strong>绕过 HNAT 硬件加速</strong>，千兆变几百兆。除非你真的在高负载下被 bufferbloat 困扰</td></tr>
+<tr><td>改 <code>factory</code> 分区换 MAC</td><td>WAN MAC 在 <code>network.wan.macaddr</code> 里改就够了，不需要动 factory</td></tr>
+<tr><td>刷第三方 OpenWrt 官方固件</td><td>会丢掉 GL 的一整套功能（gl-ui、FastNet、netifyd、云管理、repeater、kmwan）。当前这个 iStoreOS 定制固件已经是"GL 功能 + 可装 OpenWrt 包"的折中，刷纯 OpenWrt 是退步</td></tr>
+<tr><td>同时跑多个代理内核</td><td>内存和 iptables 都会打架。<strong>一个 OpenClash 就够了</strong></td></tr>
+</table></div>
+
+<h2 id="s14"><span class="num">14</span>只读排查手册（复制即用）</h2>
+
+<p>下面这些都是<strong>纯只读命令</strong>，随便跑不会改任何东西。按"我想知道什么"组织。</p>
+
+<h3>14.1 系统状态一眼看全</h3>
+<pre><code><span class="c"># 一句话总览：型号/内核/运行时长/负载/内存/温度/磁盘</span>
+{
+  echo "=== 型号 ==="; cat /proc/device-tree/model; echo
+  echo "=== 系统 ==="; cat /etc/openwrt_release | head -8
+  echo "=== 内核 ==="; uname -r
+  echo "=== 运行 ==="; uptime
+  echo "=== 内存 ==="; head -3 /proc/meminfo
+  echo "=== 温度 ==="; cat /sys/class/thermal/thermal_zone0/temp
+  echo "=== 磁盘 ==="; df -h | grep -E "overlay|rom|tmp"
+}</code></pre>
+
+<h3>14.2 网络与接口</h3>
+<pre><code><span class="c"># 所有接口的 IP / 状态 / MAC</span>
+ip -br addr
+
+<span class="c"># WAN 拿到了什么（IP/网关/DNS/剩余租期）</span>
+ifstatus wan | head -40
+
+<span class="c"># 路由表</span>
+ip route
+
+<span class="c"># DSA 端口状态（哪几个口插了线）</span>
+ip -d link show | grep -E "^[0-9]+: (lan|eth)" -A2
+
+<span class="c"># 在线设备（DHCP 租约）</span>
+cat /tmp/dhcp.leases
+
+<span class="c"># ARP 表（谁真的在通信）</span>
+ip neigh</code></pre>
+
+<h3>14.3 服务与端口</h3>
+<pre><code><span class="c"># 所有监听端口 + 归属进程</span>
+netstat -lntup
+
+<span class="c"># 某个服务是否开机自启（有 S 软链就是启用）</span>
+ls -la /etc/rc.d/ | grep -E "openclash|adguard|dnsmasq|netifyd"
+
+<span class="c"># 某个服务当前状态</span>
+/etc/init.d/openclash status
+
+<span class="c"># 内存占用 Top 10（按 RSS 而非虚存）</span>
+for p in /proc/[0-9]*; do
+  echo "$(awk '/VmRSS/{print $2}' $p/status 2>/dev/null) $(cat $p/comm 2>/dev/null)"
+done | sort -rn | head -10</code></pre>
+
+<h3>14.4 排查"为什么某东西没生效"</h3>
+<pre><code><span class="c"># ① 有没有"改了但没提交"的配置</span>
+uci changes
+
+<span class="c"># ② 配置写进去了但服务没重载？比对文件 mtime 和服务启动时间</span>
+ls -la /etc/config/firewall
+ps | grep -E "netifd|dnsmasq"
+
+<span class="c"># ③ 防火墙规则到底在不在内核里</span>
+iptables -t filter -L -n -v | head -30
+iptables -t nat -L -n -v | head -20
+iptables -t mangle -L -n -v
+
+<span class="c"># ④ 规则在但没生效？看 pkts 计数有没有增长</span>
+<span class="c">#（等 10 秒再跑一次，对比 pkts 列）</span>
+
+<span class="c"># ⑤ 服务为什么起不来（看日志）</span>
+logread | grep -iE "error|fail|warn" | tail -30
+
+<span class="c"># ⑥ 内核有没有报错</span>
+dmesg | tail -40
+
+<span class="c"># ⑦ 上次崩溃留下了什么</span>
+ls -la /sys/fs/pstore/</code></pre>
+
+<h3>14.5 HNAT 与性能</h3>
+<pre><code><span class="c"># 硬件加速是否工作</span>
+cat /sys/kernel/debug/hnat/hnat_setting
+
+<span class="c"># 有多少连接被硬件加速了（数字大 = 在加速）</span>
+wc -l /sys/kernel/debug/hnat/all_entry
+
+<span class="c"># ★ 为什么某个流没被加速</span>
+cat /sys/kernel/debug/hnat/cpu_reason
+
+<span class="c"># 当前 conntrack 用量</span>
+sysctl net.netfilter.nf_conntrack_count net.netfilter.nf_conntrack_buckets
+
+<span class="c"># 看是否被整形/QoS 干扰</span>
+tc qdisc show</code></pre>
+
+<h3>14.6 无线</h3>
+<pre><code><span class="c"># 当前射频、信道、带宽、SSID</span>
+iw dev ra0 info
+iw dev rax0 info
+
+<span class="c"># 连上了哪些终端 + 信号强度</span>
+iw dev rax0 station dump
+iw dev ra0 station dump
+
+<span class="c"># 扫描周边（注意：扫描会让 AP 短暂降功率）</span>
+iw dev rax0 scan | grep -E "SSID|signal|DS Parameter"
+
+<span class="c"># 无线配置（不含密码）</span>
+uci show wireless | grep -vE "key|password"</code></pre>
+
+<h3>14.7 找出"我改了哪些文件"</h3>
+<pre><code><span class="c"># 方法一：对比 /rom（最准）</span>
+for f in $(find /rom/etc -maxdepth 3 -type f 2>/dev/null); do
+  rel=${f#/rom}
+  [ -f "$rel" ] && ! cmp -s "$rel" "$f" && echo "改过: $rel"
+done
+
+<span class="c"># 方法二：直接看 overlay 里有什么（overlay 只存改动过的文件）</span>
+find /overlay/upper -type f -newermt "-7 days" 2>/dev/null | head -40
+
+<span class="c"># 方法三：按修改时间找最近动过的东西</span>
+find /etc /www -newermt "-2 days" -type f 2>/dev/null | head -30</code></pre>
+
+<h2 id="s15"><span class="num">15</span>现状记录与风险清单</h2>
+
+<div class="box ok">
+  <b>本次审计的完整性与零改动声明</b>
+  <p>本报告所有数据来自 <strong>SSH 只读命令 + HTTP 静态资源列表</strong>。<br>
+  未执行 <code>uci set/commit/apply</code>、未 <code>opkg install/remove</code>、未写任何文件、<strong>未重启</strong>。<br>
+  <code>uci changes</code> 复核为空。</p>
+</div>
+
+<h3>15.1 服务现状总表</h3>
+<div class="tw"><table>
+<tr><th style="width:22%">服务</th><th style="width:14%">状态</th><th>说明</th></tr>
+<tr><td>OpenClash (mihomo)</td><td><span class="tag t-run">运行</span></td><td>fake-ip + rule 模式，配置 <code>now-enhanced.yaml</code>，<code>intranet_allowed=1</code></td></tr>
+<tr><td>AdGuardHome</td><td><span class="tag t-warn">跑但未接管</span></td><td><code>enabled=1</code> / <code>dns_enabled=0</code>。面板 :3000，DNS :3053 闲置</td></tr>
+<tr><td>netifyd + gl-dpi</td><td><span class="tag t-run">运行</span></td><td>DPI 应用识别，配合 NFQUEUE 前 32 包</td></tr>
+<tr><td>dnsmasq</td><td><span class="tag t-run">运行</span></td><td>DNS+DHCP，上游 <code>127.0.0.1#7874</code></td></tr>
+<tr><td>FastNet</td><td><span class="tag t-warn">运行，端口对外</span></td><td>0.0.0.0:3200，<strong>防火墙 WAN 侧放行</strong></td></tr>
+<tr><td>linkease 应用中心</td><td><span class="tag t-run">运行</span></td><td>127.0.0.1:19290，通过 uhttpd <code>/apps</code> 反代</td></tr>
+<tr><td>ttyd 网页终端</td><td><span class="tag t-run">运行</span></td><td>192.168.8.1:7681（仅 br-lan，较安全）</td></tr>
+<tr><td>repeater 中继</td><td><span class="tag t-off">未启用</span></td><td><code>apclix0</code> NO-CARRIER。<code>bsta5g</code> 段 disabled</td></tr>
+<tr><td>kmwan 多 WAN</td><td><span class="tag t-run">运行</span></td><td>配合 <code>carrier-monitor</code> 做故障切换</td></tr>
+<tr><td>minidlna</td><td><span class="tag t-warn">空转</span></td><td>媒体目录指向不存在的 <code>/tmp/mountd/disk1_part1</code></td></tr>
+<tr><td>dnscrypt-proxy / dnsproxy</td><td><span class="tag t-off">未监听</span></td><td>有开机入口和配置，但不在 netstat 列表</td></tr>
+<tr><td>SQM / eqos / cake-autorate</td><td><span class="tag t-off">未启用</span></td><td>好事——不开才不绕过 HNAT</td></tr>
+<tr><td>Tailscale / ZeroTier / OpenVPN / Tor</td><td><span class="tag t-off">未运行</span></td><td>有包和配置，服务未起</td></tr>
+<tr><td>Samba4 / WebDAV / minidlna</td><td><span class="tag t-off">端口未监听</span></td><td>NAS 相关服务当前都没起来（无外接盘）</td></tr>
+<tr><td>IPv6</td><td><span class="tag t-off">全关</span></td><td><code>wan.ipv6=0</code>、<code>lan.ra=disabled</code>、<code>dhcpv6=disabled</code></td></tr>
+</table></div>
+
+<h3>15.2 需要注意的点（只记录，未改动）</h3>
+<div class="tw"><table>
+<tr><th style="width:6%">#</th><th style="width:28%">项目</th><th style="width:36%">现状</th><th>建议方向（未做）</th></tr>
+<tr><td>1</td><td>FastNet 端口 3200 对 WAN 开放</td><td>防火墙有 <code>fastnet</code> 放行规则，进程绑 <code>0.0.0.0</code></td><td>如不用测速功能，可考虑只绑 LAN</td></tr>
+<tr><td>2</td><td>AdGuardHome 装了没生效</td><td><code>dns_enabled=0</code>，白占约 100MB 内存</td><td>要么接入链路，要么停掉省内存</td></tr>
+<tr><td>3</td><td>OpenClash 自定义规则全未生效</td><td><code>custom/</code> 15 个文件，<code>enable_custom_clash_rules=0</code></td><td>要用就打开开关，不用就删掉腾 15MB</td></tr>
+<tr><td>4</td><td>minidlna 空转</td><td>目录指向不存在的路径</td><td>接硬盘或停掉</td></tr>
+<tr><td>5</td><td><code>/etc/rc.local</code> 有残留</td><td>含自还原 + <code>drop_caches</code></td><td>可 <code>cp /rom/etc/rc.local /etc/rc.local</code> 还原</td></tr>
+<tr><td>6</td><td>Wi-Fi SSID/密码含姓名</td><td><code>GL-MT6000-Hsu</code>、密码含 <code>daway.hsu</code></td><td>降低指纹相关性（需你自己决定）</td></tr>
+<tr><td>7</td><td>OpenClash 面板局域网可访问</td><td><code>intranet_allowed=1</code>，9090 控制器有密码</td><td>确认密码强度即可</td></tr>
+<tr><td>8</td><td>Web 全部自签证书</td><td>uhttpd 与 nginx 各一套</td><td>想消除浏览器警告可换证书</td></tr>
+<tr><td>9</td><td>两个 <code>crond</code> 并存</td><td><code>/etc/crontabs</code> 与 <code>/tmp/gl_crontabs</code></td><td>加任务统一放 <code>/etc/crontabs/root</code></td></tr>
+<tr><td>10</td><td>swap 不存在</td><td>无 swap 分区/文件，1GB 内存纯物理</td><td>内存紧张时可在 USB 盘上建 swap（会损耗 U 盘）</td></tr>
+</table></div>
+
+<div class="box dang">
+  <b>明文敏感信息落点（自查用，别外传）</b>
+  <p>以下几处存着明文口令/密钥，本报告<strong>不复制具体值</strong>，只告诉你位置：</p>
+  <ul style="margin-top:6px">
+    <li><code>/etc/config/wireless</code> → <code>wifi2g.key</code> / <code>wifi5g.key</code>（Wi-Fi 密码）</li>
+    <li><code>/etc/config/openclash</code> → <code>authentication</code>（面板账号）/ <code>dashboard_password</code> / <code>subscribe_info</code>（订阅令牌）</li>
+    <li><code>/etc/config/wireguard_server</code> → 私钥</li>
+    <li><code>/etc/config/gl_ddns</code> → DDNS 账号密码</li>
+    <li><code>/etc/config/network</code> → 若为 PPPoE，宽带账号密码</li>
+    <li><code>/etc/AdGuardHome/config.yaml</code> → AGH 管理密码哈希</li>
+  </ul>
+</div>
+
+<h2 id="s16"><span class="num">附录</span>速查表与参考</h2>
+
+<h3>A · 端口速查</h3>
+<div class="tw"><table>
+<tr><th style="width:16%">端口</th><th style="width:30%">服务</th><th>入口</th></tr>
+<tr><td>80 / 443</td><td>GL 后台</td><td><code>http://192.168.8.1</code></td></tr>
+<tr><td>8080 / 8443</td><td>LuCI</td><td><code>http://192.168.8.1:8080/cgi-bin/luci</code></td></tr>
+<tr><td>22</td><td>SSH</td><td><code>ssh root@192.168.8.1</code></td></tr>
+<tr><td>7681</td><td>网页终端 ttyd</td><td><code>http://192.168.8.1:7681</code></td></tr>
+<tr><td>3000</td><td>AdGuardHome 面板</td><td><code>http://192.168.8.1:3000</code></td></tr>
+<tr><td>3053</td><td>AdGuardHome DNS</td><td>（当前未接入）</td></tr>
+<tr><td>7890 / 7891 / 7893</td><td>clash HTTP / SOCKS / 混合代理</td><td>客户端可直连当代理用</td></tr>
+<tr><td>9090</td><td>clash 控制器（metacubexd）</td><td><code>http://192.168.8.1:9090</code></td></tr>
+<tr><td>7874</td><td>clash DNS</td><td>dnsmasq 的上游</td></tr>
+<tr><td>3200</td><td>FastNet</td><td><span class="tag t-warn">WAN 也开着</span></td></tr>
+</table></div>
+
+<h3>B · 关键路径速查</h3>
+<div class="tw"><table>
+<tr><th style="width:34%">我想改……</th><th>去这里</th></tr>
+<tr><td>网络接口 / IP / VLAN</td><td><code>/etc/config/network</code></td></tr>
+<tr><td>Wi-Fi</td><td><code>/etc/config/wireless</code></td></tr>
+<tr><td>DHCP / DNS</td><td><code>/etc/config/dhcp</code></td></tr>
+<tr><td>防火墙</td><td><code>/etc/config/firewall</code> + <code>/etc/firewall.user</code></td></tr>
+<tr><td>自定义开机脚本</td><td><code>/etc/rc.local</code></td></tr>
+<tr><td>定时任务</td><td><code>/etc/crontabs/root</code></td></tr>
+<tr><td>OpenClash</td><td><code>/etc/config/openclash</code> + <code>/etc/openclash/</code></td></tr>
+<tr><td>LuCI 主题与登录页</td><td><code>/etc/config/luci</code> + <code>/www/luci-static/argon/</code> + <code>/usr/lib/lua/luci/view/themes/argon/</code></td></tr>
+<tr><td>GL 后台菜单</td><td><code>/etc/glinjector/core.js</code></td></tr>
+<tr><td>内核参数</td><td><code>/etc/sysctl.conf</code> 或 <code>/etc/sysctl.d/</code></td></tr>
+<tr><td>包源</td><td><code>/etc/opkg/distfeeds.conf</code></td></tr>
+<tr><td>恢复出厂配置（看原版）</td><td><code>/rom/etc/config/</code></td></tr>
+</table></div>
+
+<h3>C · 最常用的 20 条只读命令</h3>
+<pre><code>uname -a                          <span class="c"># 内核</span>
+cat /etc/openwrt_release          <span class="c"># 固件信息</span>
+uptime                            <span class="c"># 运行时长 + 负载</span>
+head -3 /proc/meminfo             <span class="c"># 内存</span>
+df -h                             <span class="c"># 磁盘</span>
+cat /proc/partitions              <span class="c"># 分区</span>
+ip -br addr                       <span class="c"># 接口与 IP</span>
+ip route                          <span class="c"># 路由表</span>
+ip neigh                          <span class="c"># ARP / 邻居</span>
+netstat -lntup                    <span class="c"># 监听端口</span>
+ps w                              <span class="c"># 进程（不截断）</span>
+logread | tail -40                <span class="c"># 系统日志</span>
+dmesg | tail -40                  <span class="c"># 内核日志</span>
+uci show                          <span class="c"># 全部配置</span>
+uci show network                  <span class="c"># 网络配置</span>
+uci changes                       <span class="c"># 未提交的改动</span>
+cat /tmp/dhcp.leases              <span class="c"># 在线设备</span>
+cat /sys/class/thermal/thermal_zone0/temp   <span class="c"># 温度（毫摄氏度）</span>
+cat /sys/kernel/debug/hnat/all_entry | wc -l <span class="c"># 硬件加速连接数</span>
+ls -la /sys/fs/pstore/            <span class="c"># 上次崩溃日志</span>
+opkg list-installed | wc -l       <span class="c"># 已装包数量</span></code></pre>
+
+<h3>D · 术语表</h3>
+<div class="tw"><table>
+<tr><th style="width:20%">术语</th><th>解释</th></tr>
+<tr><td><strong>UCI</strong></td><td>Unified Configuration Interface，OpenWrt 的统一配置系统。<code>/etc/config/*</code> 里的每个文件都能用 <code>uci</code> 命令读写</td></tr>
+<tr><td><strong>ubus</strong></td><td>OpenWrt 的内部消息总线。所有前端/服务通过它互相调用</td></tr>
+<tr><td><strong>procd</strong></td><td>OpenWrt 的 init 系统（PID 1）。管启动顺序、服务监控、崩溃重启</td></tr>
+<tr><td><strong>overlay</strong></td><td>可写层。本机是 f2fs 镜像挂在 loop0，与只读的 squashfs 通过 overlayfs 合并成 <code>/</code></td></tr>
+<tr><td><strong>DSA</strong></td><td>Distributed Switch Architecture。新式交换芯片驱动架构，每个口是独立 netdev，取代老的 swconfig</td></tr>
+<tr><td><strong>HNAT</strong></td><td>Hardware NAT。MTK 的硬件 NAT 加速，把已建立的连接交给 ASIC 转发，绕过 CPU</td></tr>
+<tr><td><strong>FULLCONENAT</strong></td><td>全锥形 NAT。NAT 类型比普通 MASQUERADE 更宽松，利于游戏联机与 P2P</td></tr>
+<tr><td><strong>fake-ip</strong></td><td>OpenClash 的 DNS 模式。对代理域名返回 <code>198.18.x.x</code> 假地址，靠目的 IP 反查真实域名再决定走哪条线</td></tr>
+<tr><td><strong>LuCI</strong></td><td>OpenWrt 官方的 Web 界面（Lua + JS）</td></tr>
+<tr><td><strong>gl-ui / gl-ngx</strong></td><td>GL.iNet 自己的 Web 后端（nginx + Lua），提供 GL 后台</td></tr>
+<tr><td><strong>iStore</strong></td><td>第三方应用商店，能一键装 OpenWrt 插件</td></tr>
+<tr><td><strong>conntrack</strong></td><td>连接跟踪表。每个经过的 NAT 连接占一条。本机 500/8192</td></tr>
+</table></div>
+
+<div style="margin-top:60px;padding-top:24px;border-top:1px solid var(--line);color:var(--fg3);font-size:.82rem;text-align:center;line-height:2">
+  <div>GL-MT6000 架构与系统分层详解 · 基于 2026-11-18 实测数据</div>
+  <div>固件：OpenWrt 21.02-SNAPSHOT (iStoreOS Style by wukongdaily) · 内核 5.4.238 · build 1147</div>
+  <div style="margin-top:10px">全程只读，未改动任何配置，未重启设备</div>
+</div>
+
+</main>
+
+<button id="menuBtn" aria-label="菜单">☰</button>
+<script>
+// 移动端菜单
+const btn = document.getElementById('menuBtn');
+const sb = document.getElementById('sidebar');
+btn.addEventListener('click', () => sb.classList.toggle('open'));
+document.querySelectorAll('#sidebar a').forEach(a => {
+  a.addEventListener('click', () => {
+    if (window.innerWidth <= 1024) sb.classList.remove('open');
+  });
+});
+// 滚动高亮
+const links = [...document.querySelectorAll('#sidebar a')];
+const secs = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const onScroll = () => {
+  let cur = secs[0];
+  for (const s of secs) {
+    if (s.getBoundingClientRect().top <= 120) cur = s;
+  }
+  links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + cur.id));
+};
+window.addEventListener('scroll', onScroll, {passive:true});
+onScroll();
+</script>
+</body>
+</html>
